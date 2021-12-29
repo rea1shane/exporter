@@ -1,8 +1,8 @@
 package http
 
 import (
-	"basexporter/pkg/middleware"
-	"basexporter/pkg/prometheus"
+	"basexporter/internal/middleware"
+	"basexporter/internal/prometheus"
 	"basexporter/required/structs"
 	"context"
 	"github.com/gin-gonic/gin"
