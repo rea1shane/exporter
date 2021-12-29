@@ -15,7 +15,7 @@ import (
 type Http struct {
 	client    *http.Client
 	attempts  int
-	sleepTime time.Duration // sleepTime will increase with attempt tiems, value = sleepTime * (2 * times - 1)
+	sleepTime time.Duration // sleepTime will increase with attempt times, value = sleepTime * (2 * times - 1)
 }
 
 func GetHttp(attempts int, sleepTime time.Duration) Http {
