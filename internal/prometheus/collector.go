@@ -1,9 +1,9 @@
 package prometheus
 
 import (
-	"basexporter/required/structs"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"strings"

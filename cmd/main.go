@@ -1,9 +1,9 @@
 package main
 
 import (
-	"basexporter/required/functions"
-	"basexporter/required/structs"
-	"basexporter/util"
+	"github.com/rea1shane/basexporter/required/functions"
+	"github.com/rea1shane/basexporter/required/structs"
+	"github.com/rea1shane/basexporter/util"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package util
 
 import (
-	"basexporter/required/structs"
 	"fmt"
 	"github.com/prometheus/common/version"
+	"github.com/rea1shane/basexporter/required/structs"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 )

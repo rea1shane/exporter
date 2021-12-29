@@ -1,4 +1,4 @@
-module basexporter
+module github.com/rea1shane/basexporter
 
 go 1.17
 

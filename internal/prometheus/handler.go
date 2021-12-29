@@ -1,12 +1,12 @@
 package prometheus
 
 import (
-	"basexporter/required/structs"
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
+	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	stdlog "log"
 	"net/http"

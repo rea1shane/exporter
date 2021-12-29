@@ -1,12 +1,12 @@
 package http
 
 import (
-	"basexporter/internal/middleware"
-	"basexporter/internal/prometheus"
-	"basexporter/required/structs"
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/common/version"
+	"github.com/rea1shane/basexporter/internal/middleware"
+	"github.com/rea1shane/basexporter/internal/prometheus"
+	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"

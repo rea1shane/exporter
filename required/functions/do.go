@@ -1,9 +1,9 @@
 package functions
 
 import (
-	"basexporter/internal/http"
-	"basexporter/internal/prometheus"
-	"basexporter/required/structs"
+	"github.com/rea1shane/basexporter/internal/http"
+	"github.com/rea1shane/basexporter/internal/prometheus"
+	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 )
 
