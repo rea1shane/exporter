@@ -1,9 +1,8 @@
-package prometheus
+package basexporter
 
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"strings"
@@ -12,15 +11,15 @@ import (
 )
 
 var (
-	Factories              = make(map[string]func(namespace string, logger *log.Entry) (structs.Collector, error)) // Factories records all collector's construction method
-	InitiatedCollectorsMtx = sync.Mutex{}                                                                          // InitiatedCollectorsMtx avoid thread conflicts
-	InitiatedCollectors    = make(map[string]structs.Collector)                                                    // InitiatedCollectors record the collectors that have been initialized in the method NewTargetCollector (To reduce the collector's construction method call)
-	CollectorState         = make(map[string]*bool)                                                                // CollectorState records all collector's default state (enable or disable)
-	ForcedCollectors       = map[string]bool{}                                                                     // ForcedCollectors collectors which have been explicitly enabled or disabled
+	Factories              = make(map[string]func(namespace string, logger *log.Entry) (Collector, error)) // Factories records all collector's construction method
+	InitiatedCollectorsMtx = sync.Mutex{}                                                                  // InitiatedCollectorsMtx avoid thread conflicts
+	InitiatedCollectors    = make(map[string]Collector)                                                    // InitiatedCollectors record the collectors that have been initialized in the method NewTargetCollector (To reduce the collector's construction method call)
+	CollectorState         = make(map[string]*bool)                                                        // CollectorState records all collector's default state (enable or disable)
+	ForcedCollectors       = map[string]bool{}                                                             // ForcedCollectors collectors which have been explicitly enabled or disabled
 )
 
 type TargetCollector struct {
-	Collectors         map[string]structs.Collector
+	Collectors         map[string]Collector
 	Logger             *log.Logger
 	ScrapeDurationDesc *prometheus.Desc
 	ScrapeSuccessDesc  *prometheus.Desc
@@ -35,7 +34,7 @@ func (t TargetCollector) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
 	for name, c := range t.Collectors {
 		wg.Add(1)
-		go func(name string, c structs.Collector) {
+		go func(name string, c Collector) {
 			defer wg.Done()
 			Execute(name, c, ch, t.Logger, t.ScrapeDurationDesc, t.ScrapeSuccessDesc)
 		}(name, c)
@@ -44,7 +43,7 @@ func (t TargetCollector) Collect(ch chan<- prometheus.Metric) {
 }
 
 // NewTargetCollector creates a new TargetCollector.
-func NewTargetCollector(exporter structs.Exporter, logger *log.Logger, filters ...string) (*TargetCollector, error) {
+func NewTargetCollector(exporter Exporter, logger *log.Logger, filters ...string) (*TargetCollector, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := CollectorState[filter]
@@ -56,7 +55,7 @@ func NewTargetCollector(exporter structs.Exporter, logger *log.Logger, filters .
 		}
 		f[filter] = true
 	}
-	collectors := make(map[string]structs.Collector)
+	collectors := make(map[string]Collector)
 	InitiatedCollectorsMtx.Lock()
 	defer InitiatedCollectorsMtx.Unlock()
 	for key, enabled := range CollectorState {
@@ -92,7 +91,14 @@ func NewTargetCollector(exporter structs.Exporter, logger *log.Logger, filters .
 	}, nil
 }
 
-func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *log.Entry) (structs.Collector, error)) {
+// Collector is the interface a collector has to implement.
+type Collector interface {
+	// Update Get new metrics and expose them via prometheus registry.
+	Update(ch chan<- prometheus.Metric) error
+}
+
+// RegisterCollector After you implement the Collector, you should call this func to register it.
+func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *log.Entry) (Collector, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {
 		helpDefaultState = "enabled"
@@ -117,7 +123,7 @@ func CollectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error
 	}
 }
 
-func Execute(name string, c structs.Collector, ch chan<- prometheus.Metric, logger *log.Logger, scrapeDurationDesc *prometheus.Desc, scrapeSuccessDesc *prometheus.Desc) {
+func Execute(name string, c Collector, ch chan<- prometheus.Metric, logger *log.Logger, scrapeDurationDesc *prometheus.Desc, scrapeSuccessDesc *prometheus.Desc) {
 	begin := time.Now()
 	err := c.Update(ch)
 	duration := time.Since(begin)

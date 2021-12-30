@@ -1,4 +1,4 @@
-package prometheus
+package basexporter
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
-	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	stdlog "log"
 	"net/http"
@@ -20,10 +19,10 @@ type Handler struct {
 	IncludeExporterMetrics  bool
 	MaxRequests             int
 	Logger                  *log.Logger
-	Exporter                structs.Exporter
+	Exporter                Exporter
 }
 
-func NewHandler(exporter structs.Exporter, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *Handler {
+func NewHandler(exporter Exporter, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *Handler {
 	h := &Handler{
 		ExporterMetricsRegistry: prometheus.NewRegistry(),
 		IncludeExporterMetrics:  includeExporterMetrics,

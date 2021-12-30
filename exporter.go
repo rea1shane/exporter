@@ -1,12 +1,9 @@
-package http
+package basexporter
 
 import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/common/version"
-	"github.com/rea1shane/basexporter/internal/middleware"
-	"github.com/rea1shane/basexporter/internal/prometheus"
-	"github.com/rea1shane/basexporter/required/structs"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -17,7 +14,23 @@ import (
 
 var srv *http.Server
 
-func Start(logger *log.Logger, e structs.Exporter, args structs.Args) {
+// Exporter basic info
+type Exporter struct {
+	MetricNamespace string // MetricNamespace suggest one word and low case
+	ExporterName    string // ExporterName suggest snake format, like node_exporter
+	DefaultPort     int    // DefaultPort is default web listen port of exporter
+}
+
+type Args struct {
+	ListenAddress          string
+	MetricsPath            string
+	DisableExporterMetrics bool
+	MaxRequests            int
+	LogLevel               string
+	GinMode                string
+}
+
+func Start(logger *log.Logger, e Exporter, args Args) {
 	switch args.LogLevel {
 	case "debug":
 		logger.SetLevel(log.DebugLevel)
@@ -49,7 +62,7 @@ func Start(logger *log.Logger, e structs.Exporter, args structs.Args) {
 
 	app := gin.New()
 	app.Use(
-		middleware.ToStdout(logger),
+		toStdout(logger),
 		gin.Recovery(),
 	)
 	app.GET("/", gin.WrapF(func(w http.ResponseWriter, r *http.Request) {
@@ -61,7 +74,7 @@ func Start(logger *log.Logger, e structs.Exporter, args structs.Args) {
 			</body>
 			</html>`))
 	}))
-	app.GET(args.MetricsPath, gin.WrapH(prometheus.NewHandler(e, !args.DisableExporterMetrics, args.MaxRequests, logger)))
+	app.GET(args.MetricsPath, gin.WrapH(NewHandler(e, !args.DisableExporterMetrics, args.MaxRequests, logger)))
 
 	logger.Info("Listening on address ", args.ListenAddress)
 	srv = &http.Server{
@@ -112,4 +125,30 @@ func camelString(s string) string {
 		data = append(data, d)
 	}
 	return string(data[:])
+}
+
+func toStdout(logger *log.Logger) gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+		startTime := time.Now()
+		c.Next()
+		endTime := time.Now()
+		latencyTime := endTime.Sub(startTime)
+
+		reqMethod := c.Request.Method
+		reqUri := c.Request.RequestURI
+		statusCode := c.Writer.Status()
+		clientIP := c.ClientIP()
+
+		entry := logger.
+			WithField("status_code", statusCode)
+
+		if statusCode == 200 {
+			entry.Infof("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
+		} else if statusCode == 404 {
+			entry.Warnf("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
+		} else {
+			entry.Errorf("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
+		}
+	}
 }

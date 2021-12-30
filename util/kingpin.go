@@ -3,12 +3,12 @@ package util
 import (
 	"fmt"
 	"github.com/prometheus/common/version"
-	"github.com/rea1shane/basexporter/required/structs"
+	"github.com/rea1shane/basexporter"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"os"
 )
 
-func ParseArgs(e structs.Exporter) structs.Args {
+func ParseArgs(e basexporter.Exporter) basexporter.Args {
 	var (
 		listenAddress = kingpin.Flag(
 			"web.listen-address",
@@ -41,7 +41,7 @@ func ParseArgs(e structs.Exporter) structs.Args {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	return structs.Args{
+	return basexporter.Args{
 		ListenAddress:          *listenAddress,
 		MetricsPath:            *metricsPath,
 		DisableExporterMetrics: *disableExporterMetrics,
