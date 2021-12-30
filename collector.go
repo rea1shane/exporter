@@ -97,7 +97,7 @@ type Collector interface {
 	Update(ch chan<- prometheus.Metric) error
 }
 
-// RegisterCollector After you implement the structs.Collector, you should call this func to register it.
+// RegisterCollector After you implement the Collector, you should call this func to register it.
 func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *log.Entry) (Collector, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {

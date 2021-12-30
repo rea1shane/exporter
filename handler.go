@@ -5,10 +5,10 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/version"
 	log "github.com/sirupsen/logrus"
 	stdlog "log"
 	"net/http"
+	"runtime"
 	"sort"
 )
 
@@ -21,9 +21,10 @@ type handler struct {
 	logger                  *log.Logger
 	exporterName            string
 	namespace               string
+	version                 string
 }
 
-func newHandler(exporterName string, namespace string, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *handler {
+func newHandler(exporterName string, namespace string, version string, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *handler {
 	h := &handler{
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
@@ -31,6 +32,7 @@ func newHandler(exporterName string, namespace string, includeExporterMetrics bo
 		logger:                  logger,
 		exporterName:            exporterName,
 		namespace:               namespace,
+		version:                 version,
 	}
 	if h.includeExporterMetrics {
 		h.exporterMetricsRegistry.MustRegister(
@@ -92,8 +94,21 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	// TODO 这句要不要去掉
-	r.MustRegister(version.NewCollector(h.exporterName))
+	r.MustRegister(prometheus.NewGaugeFunc(
+		prometheus.GaugeOpts{
+			Namespace: h.namespace,
+			Name:      "build_info",
+			Help: fmt.Sprintf(
+				"A metric with a constant '1' value labeled by version, revision, branch, and goversion from which %s was built.",
+				h.exporterName,
+			),
+			ConstLabels: prometheus.Labels{
+				"version":   h.version,
+				"goversion": runtime.Version(),
+			},
+		},
+		func() float64 { return 1 },
+	))
 	if err := r.Register(targetCollector); err != nil {
 		return nil, fmt.Errorf("couldn't register "+h.namespace+" collector: %s", err)
 	}

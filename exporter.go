@@ -33,6 +33,7 @@ type Args struct {
 	ginMode                string
 }
 
+// BuildExporter return a new Exporter
 func BuildExporter(metricNamespace string, exporterName string, defaultPort int, version string) Exporter {
 	return Exporter{
 		metricNamespace: metricNamespace,
@@ -42,6 +43,7 @@ func BuildExporter(metricNamespace string, exporterName string, defaultPort int,
 	}
 }
 
+// BuildArgs return a new Args
 func BuildArgs(listenAddress string, metricsPath string, disableExporterMetrics bool, maxRequests int, logLevel string, ginMode string) Args {
 	return Args{
 		listenAddress:          listenAddress,
@@ -95,7 +97,7 @@ func Start(logger *log.Logger, e Exporter, args Args) {
 			</body>
 			</html>`))
 	}))
-	app.GET(args.metricsPath, gin.WrapH(newHandler(e.exporterName, e.metricNamespace, !args.disableExporterMetrics, args.maxRequests, logger)))
+	app.GET(args.metricsPath, gin.WrapH(newHandler(e.exporterName, e.metricNamespace, e.version, !args.disableExporterMetrics, args.maxRequests, logger)))
 
 	logger.Info("Listening on address ", args.listenAddress)
 	srv = &http.Server{
@@ -173,7 +175,7 @@ func toStdout(logger *log.Logger) gin.HandlerFunc {
 	}
 }
 
-// ParseArgs You can implement another yourself if you need to
+// ParseArgs You can implement another yourself if you need
 func ParseArgs(defaultPort int) Args {
 	var (
 		listenAddress = kingpin.Flag(
