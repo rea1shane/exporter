@@ -12,52 +12,54 @@ import (
 	"sort"
 )
 
-// Handler is a common handler which implement http.Handler
-type Handler struct {
-	UnfilteredHandler       http.Handler
-	ExporterMetricsRegistry *prometheus.Registry // ExporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
-	IncludeExporterMetrics  bool
-	MaxRequests             int
-	Logger                  *log.Logger
-	Exporter                Exporter
+// handler is a common handler which implement http.Handler
+type handler struct {
+	unfilteredHandler       http.Handler
+	exporterMetricsRegistry *prometheus.Registry // exporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
+	includeExporterMetrics  bool
+	maxRequests             int
+	logger                  *log.Logger
+	exporterName            string
+	namespace               string
 }
 
-func NewHandler(exporter Exporter, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *Handler {
-	h := &Handler{
-		ExporterMetricsRegistry: prometheus.NewRegistry(),
-		IncludeExporterMetrics:  includeExporterMetrics,
-		MaxRequests:             maxRequests,
-		Logger:                  logger,
-		Exporter:                exporter,
+func newHandler(exporterName string, namespace string, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *handler {
+	h := &handler{
+		exporterMetricsRegistry: prometheus.NewRegistry(),
+		includeExporterMetrics:  includeExporterMetrics,
+		maxRequests:             maxRequests,
+		logger:                  logger,
+		exporterName:            exporterName,
+		namespace:               namespace,
 	}
-	if h.IncludeExporterMetrics {
-		h.ExporterMetricsRegistry.MustRegister(
+	if h.includeExporterMetrics {
+		h.exporterMetricsRegistry.MustRegister(
 			promcollectors.NewProcessCollector(promcollectors.ProcessCollectorOpts{}),
 			promcollectors.NewGoCollector(),
 		)
 	}
-	if innerHandler, err := h.InnerHandler(); err != nil {
+	if innerHandler, err := h.innerHandler(); err != nil {
 		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
 	} else {
-		h.UnfilteredHandler = innerHandler
+		h.unfilteredHandler = innerHandler
 	}
 	return h
 }
 
 // ServeHTTP implements http.Handler.
-func (h *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	filters := request.URL.Query()["collect[]"]
-	h.Logger.Debug("collect query's filters: ", filters)
+	h.logger.Debug("collect query's filters: ", filters)
 
 	if len(filters) == 0 {
 		// No filters, use the prepared unfiltered handler.
-		h.UnfilteredHandler.ServeHTTP(writer, request)
+		h.unfilteredHandler.ServeHTTP(writer, request)
 		return
 	}
 	// To serve filtered metrics, we create a filtering handler on the fly.
-	filteredHandler, err := h.InnerHandler(filters...)
+	filteredHandler, err := h.innerHandler(filters...)
 	if err != nil {
-		h.Logger.Warnf("Couldn't create filtered metrics handler\n%+v", err)
+		h.logger.Warnf("Couldn't create filtered metrics handler\n%+v", err)
 		writer.WriteHeader(http.StatusBadRequest)
 		_, _ = writer.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
 		return
@@ -65,12 +67,12 @@ func (h *Handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	filteredHandler.ServeHTTP(writer, request)
 }
 
-// InnerHandler is used to create both the one unfiltered http.Handler to be
-// wrapped by the outer Handler and also the filtered handlers created on the
-// fly. The former is accomplished by calling InnerHandler without any arguments
+// innerHandler is used to create both the one unfiltered http.Handler to be
+// wrapped by the outer handler and also the filtered handlers created on the
+// fly. The former is accomplished by calling innerHandler without any arguments
 // (in which case it will log all the collectors enabled via command-line flags).
-func (h *Handler) InnerHandler(filters ...string) (http.Handler, error) {
-	targetCollector, err := NewTargetCollector(h.Exporter, h.Logger, filters...)
+func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
+	targetCollector, err := newTargetCollector(h.exporterName, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -78,35 +80,36 @@ func (h *Handler) InnerHandler(filters ...string) (http.Handler, error) {
 	// Only log the creation of an unfiltered handler, which should happen
 	// only once upon startup.
 	if len(filters) == 0 {
-		h.Logger.Info("Enabled collectors")
+		h.logger.Info("Enabled collectors")
 		var collectors []string
-		for n := range targetCollector.Collectors {
+		for n := range targetCollector.collectors {
 			collectors = append(collectors, n)
 		}
 		sort.Strings(collectors)
 		for _, c := range collectors {
-			h.Logger.Info("collector ", c)
+			h.logger.Info("collector ", c)
 		}
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(version.NewCollector(h.Exporter.ExporterName))
+	// TODO 这句要不要去掉
+	r.MustRegister(version.NewCollector(h.exporterName))
 	if err := r.Register(targetCollector); err != nil {
-		return nil, fmt.Errorf("couldn't register "+h.Exporter.MetricNamespace+" collector: %s", err)
+		return nil, fmt.Errorf("couldn't register "+h.namespace+" collector: %s", err)
 	}
 	handler := promhttp.HandlerFor(
-		prometheus.Gatherers{h.ExporterMetricsRegistry, r},
+		prometheus.Gatherers{h.exporterMetricsRegistry, r},
 		promhttp.HandlerOpts{
-			ErrorLog:            stdlog.New(h.Logger.Out, "", 0),
+			ErrorLog:            stdlog.New(h.logger.Out, "", 0),
 			ErrorHandling:       promhttp.ContinueOnError,
-			MaxRequestsInFlight: h.MaxRequests,
-			Registry:            h.ExporterMetricsRegistry,
+			MaxRequestsInFlight: h.maxRequests,
+			Registry:            h.exporterMetricsRegistry,
 		},
 	)
-	if h.IncludeExporterMetrics {
+	if h.includeExporterMetrics {
 		// Note that we have to use h.exporterMetricsRegistry here to use the same promhttp metrics for all expositions.
 		handler = promhttp.InstrumentMetricHandler(
-			h.ExporterMetricsRegistry, handler,
+			h.exporterMetricsRegistry, handler,
 		)
 	}
 	return handler, nil
