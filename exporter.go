@@ -136,7 +136,9 @@ func camelString(s string) string {
 			k = true
 		}
 		if d >= 'a' && d <= 'z' && (j || k == false) {
-			data = append(data, ' ')
+			if i != 0 {
+				data = append(data, ' ')
+			}
 			d = d - 32
 			j = false
 			k = true
