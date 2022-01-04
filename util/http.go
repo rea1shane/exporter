@@ -32,12 +32,12 @@ func GetHttp(attempts int, sleepTime time.Duration) Http {
 	}
 }
 
-func (h *Http) Request(req *http.Request, ctx context.Context, responseStruct interface{}) error {
+func (h *Http) request(req *http.Request, ctx context.Context) ([]byte, error) {
 	req = req.WithContext(ctx)
 	escape(req)
 	res, err := h.attemptDo(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer func(Body io.ReadCloser) {
 		_ = Body.Close()
@@ -46,11 +46,27 @@ func (h *Http) Request(req *http.Request, ctx context.Context, responseStruct in
 	if err != nil {
 		c := getReqFailureContext(req)
 		c["response_body"] = string(responseBody)
-		return failure.Wrap(err, c)
+		return nil, failure.Wrap(err, c)
 	}
-	if err = json.Unmarshal(responseBody, &responseStruct); err != nil {
+	return responseBody, nil
+}
+
+func (h *Http) RequestWithStringResponse(req *http.Request, ctx context.Context) (string, error) {
+	bytes, err := h.request(req, ctx)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
+}
+
+func (h *Http) RequestWithStructResponse(req *http.Request, ctx context.Context, responseStruct interface{}) error {
+	bytes, err := h.request(req, ctx)
+	if err != nil {
+		return err
+	}
+	if err = json.Unmarshal(bytes, &responseStruct); err != nil {
 		c := getReqFailureContext(req)
-		c["response_body"] = string(responseBody)
+		c["response_body"] = string(bytes)
 		return failure.Wrap(err, c)
 	}
 	return nil
