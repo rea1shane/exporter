@@ -1,2 +1,0 @@
-# basexporter
-prometheus exporter framework
