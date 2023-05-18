@@ -53,12 +53,11 @@ func (e Exporter) Run(logger *logrus.Logger) {
 			"When the latency exceeds the threshold, the log level will change from INFO to WARN. Use 0 to disable.",
 		).Default("0").Duration()
 	)
-	logLevelMap := make(map[string]logrus.Level)
-	logLevelMap["debug"] = logrus.DebugLevel
-	logLevelMap["info"] = logrus.InfoLevel
-	logLevelMap["warn"] = logrus.WarnLevel
-	logLevelMap["error"] = logrus.ErrorLevel
-	logger.SetLevel(logLevelMap[*logLevel])
+	level, err := logrus.ParseLevel(*logLevel)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	logger.SetLevel(level)
 
 	kingpin.Version(version.Print(e.Name))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
@@ -79,7 +78,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	handler.GET(*metricsPath, gin.WrapH(newHandler(!*disableExporterMetrics, *maxRequests, logger)))
 	if *metricsPath != "/" {
 		landingConfig := web.LandingConfig{
-			Name:        e.Name,
+			Name:        strings.snake2Caml(e.Name),
 			Description: e.Description,
 			Version:     version.Info(),
 			Links: []web.LandingLinks{
