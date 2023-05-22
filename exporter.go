@@ -45,7 +45,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 		).Envar("GOMAXPROCS").Default("1").Int()
 		address = kingpin.Flag(
 			"web.listen-address",
-			"Address on which to expose metrics and web interface. Not allow multiple addresses.",
+			"Address on which to expose metrics and web interface. Not support multiple addresses.",
 		).Default(e.DefaultAddress).String()
 
 		logLevel = kingpin.Flag(
