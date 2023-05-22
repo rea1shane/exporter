@@ -5,7 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"github.com/rea1shane/gooooo/http"
 	cases "github.com/rea1shane/gooooo/strings"
 	"github.com/sirupsen/logrus"
@@ -18,7 +17,7 @@ import (
 type Exporter struct {
 	Name           string // Name stylized as strings.SnakeCase, e.g. "node_exporter".
 	Description    string // Description
-	DefaultAddress string // DefaultAddress
+	DefaultAddress string // DefaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
 }
 
 // Run start server to collect metrics.
@@ -44,7 +43,10 @@ func (e Exporter) Run(logger *logrus.Logger) {
 			"runtime.gomaxprocs",
 			"The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
-		toolkitFlags = kingpinflag.AddFlags(kingpin.CommandLine, e.DefaultAddress)
+		address = kingpin.Flag(
+			"web.listen-address",
+			"Address on which to expose metrics and web interface. Not allow multiple addresses.",
+		).Default(e.DefaultAddress).String()
 
 		logLevel = kingpin.Flag(
 			"log.level",
@@ -98,5 +100,10 @@ func (e Exporter) Run(logger *logrus.Logger) {
 		handler.GET("/", gin.WrapH(landingPage))
 	}
 
-	handler.Run(*toolkitFlags.WebListenAddresses...)
+	switch *address {
+	case "":
+		handler.Run()
+	default:
+		handler.Run(*address)
+	}
 }
