@@ -7,19 +7,21 @@ import (
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
 	"github.com/rea1shane/gooooo/http"
+	cases "github.com/rea1shane/gooooo/strings"
 	"github.com/sirupsen/logrus"
 	"os"
 	"runtime"
+	"strings"
 )
 
 // Exporter basic information.
 type Exporter struct {
-	Name           string // Name stylized as snake_case, e.g. "node_exporter".
+	Name           string // Name stylized as strings.SnakeCase, e.g. "node_exporter".
 	Description    string // Description
 	DefaultAddress string // DefaultAddress
 }
 
-// Run start Exporter.
+// Run start server to collect metrics.
 func (e Exporter) Run(logger *logrus.Logger) {
 	var (
 		metricsPath = kingpin.Flag(
@@ -77,8 +79,9 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	handler := http.NewHandler(logger, *latencyThreshold)
 	handler.GET(*metricsPath, gin.WrapH(newHandler(!*disableExporterMetrics, *maxRequests, logger)))
 	if *metricsPath != "/" {
+		displayName, _ := cases.ConvertCase(e.Name, cases.PascalSnakeCase)
 		landingConfig := web.LandingConfig{
-			Name:        strings.snake2Caml(e.Name),
+			Name:        strings.ReplaceAll(displayName, "_", " "),
 			Description: e.Description,
 			Version:     version.Info(),
 			Links: []web.LandingLinks{
