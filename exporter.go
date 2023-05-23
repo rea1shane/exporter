@@ -19,20 +19,23 @@ type Exporter struct {
 	namespace      string // namespace defines the common namespace to be used by all metrics, e.g. "node".
 	description    string // description
 	defaultAddress string // defaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
+
+	logger *logrus.Logger // logger will be added a logrus.Fields "collector" and logger can be controlled logrus.Level by the command line flag.
 }
 
 // New return a new Exporter.
-func New(name, namespace, description, defaultAddress string) Exporter {
+func New(name, namespace, description, defaultAddress string, logger *logrus.Logger) Exporter {
 	return Exporter{
 		name:           name,
 		namespace:      namespace,
 		description:    description,
 		defaultAddress: defaultAddress,
+		logger:         logger,
 	}
 }
 
 // Run start server to collect metrics.
-func (e Exporter) Run(logger *logrus.Logger) {
+func (e Exporter) Run() {
 	var (
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
@@ -70,9 +73,9 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	)
 	level, err := logrus.ParseLevel(*logLevel)
 	if err != nil {
-		logger.Fatal(err)
+		e.logger.Fatal(err)
 	}
-	logger.SetLevel(level)
+	e.logger.SetLevel(level)
 
 	kingpin.Version(version.Print(e.name))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
@@ -82,15 +85,15 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
-	logger.Infof("Starting %s", e.name)
-	logger.Infof("version: %s", version.Info())
-	logger.Infof("build context: %s", version.BuildContext())
+	e.logger.Infof("Starting %s", e.name)
+	e.logger.Infof("version: %s", version.Info())
+	e.logger.Infof("build context: %s", version.BuildContext())
 
 	runtime.GOMAXPROCS(*maxProcs)
-	logger.Debugf("go MAXPROCS: %d", runtime.GOMAXPROCS(0))
+	e.logger.Debugf("go MAXPROCS: %d", runtime.GOMAXPROCS(0))
 
-	handler := http.NewHandler(logger, *latencyThreshold)
-	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, logger)))
+	handler := http.NewHandler(e.logger, *latencyThreshold)
+	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, e.logger)))
 	if *metricsPath != "/" {
 		displayName, _ := cases.ConvertCase(e.name, cases.PascalSnakeCase)
 		landingConfig := web.LandingConfig{
@@ -106,7 +109,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			logger.Fatal(err)
+			e.logger.Fatal(err)
 		}
 		handler.GET("/", gin.WrapH(landingPage))
 	}
