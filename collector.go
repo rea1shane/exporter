@@ -41,7 +41,13 @@ var (
 	forcedCollectors       = map[string]bool{}                                                                // forcedCollectors collectors which have been explicitly enabled or disabled
 )
 
-func registerCollector(collector string, isDefaultEnabled bool, factory func(logger log.Logger) (Collector, error)) {
+// Collector is the interface a collector has to implement.
+type Collector interface {
+	Update(ch chan<- prometheus.Metric) error // Update get new metrics and expose them via prometheus registry.
+}
+
+// RegisterCollector should be called once you implement the Collector interface.
+func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *logrus.Entry) (Collector, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {
 		helpDefaultState = "enabled"
@@ -59,10 +65,16 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func(log
 	factories[collector] = factory
 }
 
-// NodeCollector implements the prometheus.Collector interface.
-type NodeCollector struct {
-	Collectors map[string]Collector
-	logger     *logrus.Logger
+// collectorFlagAction generates a new action function for the given collector
+// to track whether it has been explicitly enabled or disabled from the command line.
+// A new action function is needed for each collector flag because the ParseContext
+// does not contain information about which flag called the action.
+// See: https://github.com/alecthomas/kingpin/issues/294
+func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
+	return func(ctx *kingpin.ParseContext) error {
+		forcedCollectors[collector] = true
+		return nil
+	}
 }
 
 // DisableDefaultCollectors sets the collector state to false for all collectors which
@@ -75,16 +87,10 @@ func DisableDefaultCollectors() {
 	}
 }
 
-// collectorFlagAction generates a new action function for the given collector
-// to track whether it has been explicitly enabled or disabled from the command line.
-// A new action function is needed for each collector flag because the ParseContext
-// does not contain information about which flag called the action.
-// See: https://github.com/alecthomas/kingpin/issues/294
-func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error {
-	return func(ctx *kingpin.ParseContext) error {
-		forcedCollectors[collector] = true
-		return nil
-	}
+// NodeCollector implements the prometheus.Collector interface.
+type NodeCollector struct {
+	Collectors map[string]Collector
+	logger     *logrus.Logger
 }
 
 // NewNodeCollector creates a new NodeCollector.
@@ -159,11 +165,6 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.L
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// Collector is the interface a collector has to implement.
-type Collector interface {
-	Update(ch chan<- prometheus.Metric) error // Update get new metrics and expose them via prometheus registry.
 }
 
 type typedDesc struct {
