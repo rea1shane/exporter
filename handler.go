@@ -26,6 +26,9 @@ type handler struct {
 
 // Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
 func (h *handler) Println(v ...interface{}) {
+	for i := 0; i < len(v)-1; i++ {
+		v[i] = fmt.Sprint(v[i]) + " "
+	}
 	h.logger.Error(v...)
 }
 
