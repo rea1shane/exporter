@@ -20,6 +20,8 @@ type handler struct {
 	includeExporterMetrics  bool
 	maxRequests             int
 	logger                  *logrus.Logger
+	exporterName            string
+	namespace               string
 }
 
 // Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
@@ -27,12 +29,14 @@ func (h *handler) Println(v ...interface{}) {
 	h.logger.Error(v...)
 }
 
-func newHandler(includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
+func newHandler(includeExporterMetrics bool, maxRequests int, logger *logrus.Logger, exporterName string, namespace string) *handler {
 	h := &handler{
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
 		maxRequests:             maxRequests,
 		logger:                  logger,
+		exporterName:            exporterName,
+		namespace:               namespace,
 	}
 	if h.includeExporterMetrics {
 		h.exporterMetricsRegistry.MustRegister(
@@ -95,9 +99,9 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(version.NewCollector("node_exporter"))
+	r.MustRegister(version.NewCollector(h.exporterName))
 	if err := r.Register(nc); err != nil {
-		return nil, fmt.Errorf("couldn't register node collector: %s", err)
+		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{h.exporterMetricsRegistry, r},
