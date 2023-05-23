@@ -10,10 +10,8 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
 )
-
-// namespace defines the common namespace to be used by all metrics.
-const namespace = "node"
 
 var (
 	scrapeDurationDesc = prometheus.NewDesc(
@@ -36,11 +34,11 @@ const (
 )
 
 var (
-	factories              = make(map[string]func(logger log.Logger) (Collector, error)) // factories records all collector's construction method
-	initiatedCollectorsMtx = sync.Mutex{}                                                // initiatedCollectorsMtx avoid thread conflicts
-	initiatedCollectors    = make(map[string]Collector)                                  // initiatedCollectors record the collectors that have been initialized in the method newTargetCollector (To reduce the collector's construction method call)
-	collectorState         = make(map[string]*bool)                                      // collectorState records all collector's default state (enable or disable)
-	forcedCollectors       = map[string]bool{}                                           // forcedCollectors collectors which have been explicitly enabled or disabled
+	factories              = make(map[string]func(namespace string, logger *logrus.Entry) (Collector, error)) // factories records all collector's construction method
+	initiatedCollectorsMtx = sync.Mutex{}                                                                     // initiatedCollectorsMtx avoid thread conflicts
+	initiatedCollectors    = make(map[string]Collector)                                                       // initiatedCollectors record the collectors that have been initialized in the method newTargetCollector (To reduce the collector's construction method call)
+	collectorState         = make(map[string]*bool)                                                           // collectorState records all collector's default state (enable or disable)
+	forcedCollectors       = map[string]bool{}                                                                // forcedCollectors collectors which have been explicitly enabled or disabled
 )
 
 func registerCollector(collector string, isDefaultEnabled bool, factory func(logger log.Logger) (Collector, error)) {
@@ -64,7 +62,7 @@ func registerCollector(collector string, isDefaultEnabled bool, factory func(log
 // NodeCollector implements the prometheus.Collector interface.
 type NodeCollector struct {
 	Collectors map[string]Collector
-	logger     log.Logger
+	logger     *logrus.Logger
 }
 
 // DisableDefaultCollectors sets the collector state to false for all collectors which
@@ -165,8 +163,7 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.L
 
 // Collector is the interface a collector has to implement.
 type Collector interface {
-	// Get new metrics and expose them via prometheus registry.
-	Update(ch chan<- prometheus.Metric) error
+	Update(ch chan<- prometheus.Metric) error // Update get new metrics and expose them via prometheus registry.
 }
 
 type typedDesc struct {
