@@ -55,7 +55,7 @@ func newHandler(exporterName string, namespace string, includeExporterMetrics bo
 // ServeHTTP implements http.Handler.
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	filters := r.URL.Query()["collect[]"]
-	h.logger.Debug("msg", "collect query:", "filters", filters)
+	h.logger.Debug("collect query's filters: ", filters)
 
 	if len(filters) == 0 {
 		// No filters, use the prepared unfiltered handler.
@@ -65,9 +65,10 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// To serve filtered metrics, we create a filtering handler on the fly.
 	filteredHandler, err := h.innerHandler(filters...)
 	if err != nil {
-		h.logger.Warn("msg", "Couldn't create filtered metrics handler:", "err", err)
+		errMsg := fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)
+		h.logger.Warn(errMsg)
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
+		w.Write([]byte(errMsg))
 		return
 	}
 	filteredHandler.ServeHTTP(w, r)
@@ -87,14 +88,14 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	// Only log the creation of an unfiltered handler, which should happen
 	// only once upon startup.
 	if len(filters) == 0 {
-		h.logger.Info("msg", "Enabled collectors")
+		h.logger.Info("Enabled collectors")
 		collectors := []string{}
 		for n := range nc.Collectors {
 			collectors = append(collectors, n)
 		}
 		sort.Strings(collectors)
 		for _, c := range collectors {
-			h.logger.Info("collector", c)
+			h.logger.Info("collector ", c)
 		}
 	}
 

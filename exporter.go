@@ -83,11 +83,11 @@ func (e Exporter) Run(logger *logrus.Logger) {
 		DisableDefaultCollectors()
 	}
 	logger.Infof("Starting %s", e.name)
-	logger.Infof("Version: %s", version.Info())
-	logger.Infof("Build context: %s", version.BuildContext())
+	logger.Infof("version: %s", version.Info())
+	logger.Infof("build context: %s", version.BuildContext())
 
 	runtime.GOMAXPROCS(*maxProcs)
-	logger.Debugf("Go MAXPROCS: %d", runtime.GOMAXPROCS(0))
+	logger.Debugf("go MAXPROCS: %d", runtime.GOMAXPROCS(0))
 
 	handler := http.NewHandler(logger, *latencyThreshold)
 	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, logger)))
