@@ -15,13 +15,13 @@ import (
 // created on the fly, if filtering is requested. Create instances with
 // newHandler.
 type handler struct {
+	exporterName            string
+	namespace               string
 	unfilteredHandler       http.Handler
 	exporterMetricsRegistry *prometheus.Registry // exporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
 	includeExporterMetrics  bool
 	maxRequests             int
 	logger                  *logrus.Logger
-	exporterName            string
-	namespace               string
 }
 
 // Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
@@ -29,14 +29,14 @@ func (h *handler) Println(v ...interface{}) {
 	h.logger.Error(v...)
 }
 
-func newHandler(includeExporterMetrics bool, maxRequests int, logger *logrus.Logger, exporterName string, namespace string) *handler {
+func newHandler(exporterName string, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
 	h := &handler{
+		exporterName:            exporterName,
+		namespace:               namespace,
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
 		maxRequests:             maxRequests,
 		logger:                  logger,
-		exporterName:            exporterName,
-		namespace:               namespace,
 	}
 	if h.includeExporterMetrics {
 		h.exporterMetricsRegistry.MustRegister(

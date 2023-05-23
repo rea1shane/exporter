@@ -15,9 +15,20 @@ import (
 
 // Exporter basic information.
 type Exporter struct {
-	Name           string // Name stylized as strings.SnakeCase, e.g. "node_exporter".
-	Description    string // Description
-	DefaultAddress string // DefaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
+	name           string // name stylized as strings.SnakeCase, e.g. "node_exporter".
+	namespace      string // namespace defines the common namespace to be used by all metrics, e.g. "node".
+	description    string // description
+	defaultAddress string // defaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
+}
+
+// New return a new Exporter.
+func New(name, namespace, description, defaultAddress string) Exporter {
+	return Exporter{
+		name:           name,
+		namespace:      namespace,
+		description:    description,
+		defaultAddress: defaultAddress,
+	}
 }
 
 // Run start server to collect metrics.
@@ -46,7 +57,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 		address = kingpin.Flag(
 			"web.listen-address",
 			"Address on which to expose metrics and web interface. Not support multiple addresses.",
-		).Default(e.DefaultAddress).String()
+		).Default(e.defaultAddress).String()
 
 		logLevel = kingpin.Flag(
 			"log.level",
@@ -63,7 +74,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	}
 	logger.SetLevel(level)
 
-	kingpin.Version(version.Print(e.Name))
+	kingpin.Version(version.Print(e.name))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
@@ -71,7 +82,7 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()
 	}
-	logger.Infof("Starting %s", e.Name)
+	logger.Infof("Starting %s", e.name)
 	logger.Infof("Version: %s", version.Info())
 	logger.Infof("Build context: %s", version.BuildContext())
 
@@ -79,12 +90,12 @@ func (e Exporter) Run(logger *logrus.Logger) {
 	logger.Debugf("Go MAXPROCS: %d", runtime.GOMAXPROCS(0))
 
 	handler := http.NewHandler(logger, *latencyThreshold)
-	handler.GET(*metricsPath, gin.WrapH(newHandler(!*disableExporterMetrics, *maxRequests, logger)))
+	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, logger)))
 	if *metricsPath != "/" {
-		displayName, _ := cases.ConvertCase(e.Name, cases.PascalSnakeCase)
+		displayName, _ := cases.ConvertCase(e.name, cases.PascalSnakeCase)
 		landingConfig := web.LandingConfig{
 			Name:        strings.ReplaceAll(displayName, "_", " "),
-			Description: e.Description,
+			Description: e.description,
 			Version:     version.Info(),
 			Links: []web.LandingLinks{
 				{
