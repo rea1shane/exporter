@@ -90,7 +90,7 @@ func (e Exporter) Run() {
 	e.logger.Infof("build context: %s", version.BuildContext())
 
 	runtime.GOMAXPROCS(*maxProcs)
-	e.logger.Debugf("go MAXPROCS: %d", runtime.GOMAXPROCS(0))
+	e.logger.Debugf("Go MAXPROCS: %d", runtime.GOMAXPROCS(0))
 
 	handler := http.NewHandler(e.logger, *latencyThreshold)
 	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, e.logger)))

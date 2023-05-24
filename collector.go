@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 )
@@ -69,7 +68,7 @@ func newCollectorCollection(namespace string, logger *logrus.Logger, filters ...
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](namespace, logger.WithField("collector", key))
+			collector, err := factories[key](namespace, logger.WithField("Collector", key))
 			if err != nil {
 				return nil, err
 			}
@@ -105,15 +104,20 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *logr
 	duration := time.Since(begin)
 	var success float64
 
+	entry := logger.WithFields(logrus.Fields{
+		"Collector": name,
+		"Duration":  duration,
+	})
+
 	if err != nil {
 		if IsNoDataError(err) {
-			level.Debug(logger).Log("msg", "collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			entry.Debug("collector returned no data: ", err)
 		} else {
-			level.Error(logger).Log("msg", "collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
+			entry.Error("collector failed: ", err)
 		}
 		success = 0
 	} else {
-		level.Debug(logger).Log("msg", "collector succeeded", "name", name, "duration_seconds", duration.Seconds())
+		entry.Debug("collector succeeded")
 		success = 1
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
