@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
@@ -41,14 +40,14 @@ var (
 	forcedCollectors       = map[string]bool{}                                                                // forcedCollectors collectors which have been explicitly enabled or disabled
 )
 
-// NodeCollector implements the prometheus.Collector interface.
-type NodeCollector struct {
-	Collectors map[string]Collector
+// collectorCollection implements the prometheus.Collector interface.
+type collectorCollection struct {
+	collectors map[string]Collector
 	logger     *logrus.Logger
 }
 
-// NewNodeCollector creates a new NodeCollector.
-func NewNodeCollector(logger log.Logger, filters ...string) (*NodeCollector, error) {
+// newCollectorCollection creates a new collectorCollection.
+func newCollectorCollection(namespace string, logger *logrus.Logger, filters ...string) (*collectorCollection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -70,7 +69,7 @@ func NewNodeCollector(logger log.Logger, filters ...string) (*NodeCollector, err
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](log.With(logger, "collector", key))
+			collector, err := factories[key](namespace, logger.WithField("collector", key))
 			if err != nil {
 				return nil, err
 			}
@@ -78,29 +77,29 @@ func NewNodeCollector(logger log.Logger, filters ...string) (*NodeCollector, err
 			initiatedCollectors[key] = collector
 		}
 	}
-	return &NodeCollector{Collectors: collectors, logger: logger}, nil
+	return &collectorCollection{collectors: collectors, logger: logger}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
-func (n NodeCollector) Describe(ch chan<- *prometheus.Desc) {
+func (cc collectorCollection) Describe(ch chan<- *prometheus.Desc) {
 	ch <- scrapeDurationDesc
 	ch <- scrapeSuccessDesc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (n NodeCollector) Collect(ch chan<- prometheus.Metric) {
+func (cc collectorCollection) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(n.Collectors))
-	for name, c := range n.Collectors {
+	wg.Add(len(cc.collectors))
+	for name, c := range cc.collectors {
 		go func(name string, c Collector) {
-			execute(name, c, ch, n.logger)
+			execute(name, c, ch, cc.logger)
 			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
-func execute(name string, c Collector, ch chan<- prometheus.Metric, logger log.Logger) {
+func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *logrus.Logger) {
 	begin := time.Now()
 	err := c.Update(ch)
 	duration := time.Since(begin)
