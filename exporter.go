@@ -20,6 +20,7 @@ var (
 )
 
 // Register exporter information.
+// See exporter struct for more information.
 func Register(name, namespace, description, defaultAddress string, logger *logrus.Logger) {
 	e.name = name
 	e.namespace = namespace
