@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	"errors"
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/common/version"
@@ -13,8 +14,31 @@ import (
 	"strings"
 )
 
-// Exporter basic information.
-type Exporter struct {
+var (
+	e          = exporter{}
+	registered = false
+)
+
+// Register exporter information.
+func Register(name, namespace, description, defaultAddress string, logger *logrus.Logger) {
+	e.name = name
+	e.namespace = namespace
+	e.description = description
+	e.defaultAddress = defaultAddress
+	e.logger = logger
+	registered = true
+}
+
+// Run server to collect metrics. MUST Register first.
+func Run() {
+	if !registered {
+		panic(errors.New("exporter unregistered"))
+	}
+	e.run()
+}
+
+// exporter information.
+type exporter struct {
 	name           string // name stylized as strings.SnakeCase, e.g. "node_exporter".
 	namespace      string // namespace defines the common namespace to be used by all metrics, e.g. "node".
 	description    string // description
@@ -23,19 +47,8 @@ type Exporter struct {
 	logger *logrus.Logger // logger will be added a logrus.Fields contains "Collector" and "Duration". logger can be controlled logrus.Level by the command line flag.
 }
 
-// New return a new Exporter.
-func New(name, namespace, description, defaultAddress string, logger *logrus.Logger) Exporter {
-	return Exporter{
-		name:           name,
-		namespace:      namespace,
-		description:    description,
-		defaultAddress: defaultAddress,
-		logger:         logger,
-	}
-}
-
-// Run start server to collect metrics.
-func (e Exporter) Run() {
+// run server to collect metrics.
+func (e exporter) run() {
 	var (
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
