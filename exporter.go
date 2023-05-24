@@ -20,7 +20,7 @@ type Exporter struct {
 	description    string // description
 	defaultAddress string // defaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
 
-	logger *logrus.Logger // logger will be added a logrus.Fields "collector" and logger can be controlled logrus.Level by the command line flag.
+	logger *logrus.Logger // logger will be added a logrus.Fields contains "Collector" and "Duration". logger can be controlled logrus.Level by the command line flag.
 }
 
 // New return a new Exporter.
