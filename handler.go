@@ -83,7 +83,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // (in which case it will log all the collectors enabled via command-line
 // flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	nc, err := collector.NewNodeCollector(h.logger, filters...)
+	ck, err := newCollectorKeeper(h.exporterName, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -93,7 +93,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	if len(filters) == 0 {
 		h.logger.Info("Enabled collectors")
 		collectors := []string{}
-		for n := range nc.Collectors {
+		for n := range ck.collectors {
 			collectors = append(collectors, n)
 		}
 		sort.Strings(collectors)
@@ -104,7 +104,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 
 	r := prometheus.NewRegistry()
 	r.MustRegister(version.NewCollector(h.exporterName))
-	if err := r.Register(nc); err != nil {
+	if err := r.Register(ck); err != nil {
 		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
 	handler := promhttp.HandlerFor(
