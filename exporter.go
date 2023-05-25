@@ -85,16 +85,16 @@ func (e exporter) run() {
 			"When the latency exceeds the threshold, the log level will change from INFO to WARN. Use 0 to disable.",
 		).Default("0").Duration()
 	)
+	kingpin.Version(version.Print(e.name))
+	kingpin.CommandLine.UsageWriter(os.Stdout)
+	kingpin.HelpFlag.Short('h')
+	kingpin.Parse()
+
 	level, err := logrus.ParseLevel(*logLevel)
 	if err != nil {
 		e.logger.Fatal(err)
 	}
 	e.logger.SetLevel(level)
-
-	kingpin.Version(version.Print(e.name))
-	kingpin.CommandLine.UsageWriter(os.Stdout)
-	kingpin.HelpFlag.Short('h')
-	kingpin.Parse()
 
 	if *disableDefaultCollectors {
 		DisableDefaultCollectors()

@@ -48,7 +48,7 @@ func newHandler(exporterName string, namespace string, includeExporterMetrics bo
 		)
 	}
 	if innerHandler, err := h.innerHandler(); err != nil {
-		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
+		logger.Fatalf("Couldn't create metrics handler: %s", err)
 	} else {
 		h.unfilteredHandler = innerHandler
 	}
