@@ -30,10 +30,10 @@ func Register(name, namespace, description, defaultAddress string, logger *logru
 	registered = true
 }
 
-// Run server to collect metrics. MUST Register first.
+// Run server to collect metrics. NEED Register first.
 func Run() {
 	if !registered {
-		panic(errors.New("exporter unregistered"))
+		panic(errors.New("exporter unregistered, need register first"))
 	}
 	e.run()
 }
