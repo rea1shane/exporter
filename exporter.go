@@ -128,10 +128,20 @@ func (e exporter) run() {
 		handler.GET("/", gin.WrapH(landingPage))
 	}
 
-	switch *address {
+	addr := resolveAddress(*address)
+	e.logger.Infof("Listening and serving HTTP on %s", addr)
+	handler.Run(addr)
+}
+
+// resolveAddress copy from gin.resolveAddress
+func resolveAddress(addr string) string {
+	switch addr {
 	case "":
-		handler.Run()
+		if port := os.Getenv("PORT"); port != "" {
+			return ":" + port
+		}
+		return ":8080"
 	default:
-		handler.Run(*address)
+		return addr
 	}
 }

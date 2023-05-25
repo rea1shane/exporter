@@ -4,11 +4,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rea1shane/exporter"
 	"github.com/rea1shane/gooooo/log"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
-	logger := log.NewLogger()
+	logger := logrus.New()
+	formatter := log.GetFormatter()
+	formatter.FieldsOrder = []string{"StatusCode", "Latency", "Collector", "Duration"}
+	logger.SetFormatter(formatter)
 	exporter.Register("test_exporter", "test", "This is a test exporter.", ":7777", logger)
 	exporter.Run()
 }

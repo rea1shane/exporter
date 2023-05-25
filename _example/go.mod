@@ -8,6 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.9.0
 	github.com/rea1shane/exporter v0.0.0-00010101000000-000000000000
 	github.com/rea1shane/gooooo v0.6.0
+	github.com/sirupsen/logrus v1.9.2
 )
 
 require (
@@ -42,7 +43,6 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
-	github.com/sirupsen/logrus v1.9.2 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.9 // indirect
 	github.com/xhit/go-str2duration/v2 v2.1.0 // indirect
