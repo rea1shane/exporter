@@ -2,7 +2,7 @@ package exporter
 
 import "github.com/prometheus/client_golang/prometheus"
 
-// TypedDesc is suggestion metric's type
+// TypedDesc contains metric's necessary information
 type TypedDesc struct {
 	desc      *prometheus.Desc
 	valueType prometheus.ValueType
@@ -12,10 +12,27 @@ func (d *TypedDesc) MustNewConstMetric(value float64, labels ...string) promethe
 	return prometheus.MustNewConstMetric(d.desc, d.valueType, value, labels...)
 }
 
+// PushTypedDesc is PushMetric TypedDesc version.
+func PushTypedDesc(ch chan<- prometheus.Metric, d TypedDesc, value interface{}, labelValues ...string) {
+	PushMetric(ch, d.desc, d.valueType, value, labelValues...)
+}
+
 // PushMetric helps construct and convert a variety of value types into Prometheus float64 metrics.
-func PushMetric(ch chan<- prometheus.Metric, fieldDesc *prometheus.Desc, name string, value interface{}, valueType prometheus.ValueType, labelValues ...string) {
+func PushMetric(ch chan<- prometheus.Metric, fieldDesc *prometheus.Desc, valueType prometheus.ValueType, value interface{}, labelValues ...string) {
 	var fVal float64
 	switch val := value.(type) {
+	case int:
+		fVal = float64(val)
+	case int8:
+		fVal = float64(val)
+	case int16:
+		fVal = float64(val)
+	case int32:
+		fVal = float64(val)
+	case int64:
+		fVal = float64(val)
+	case uint:
+		fVal = float64(val)
 	case uint8:
 		fVal = float64(val)
 	case uint16:
@@ -24,8 +41,43 @@ func PushMetric(ch chan<- prometheus.Metric, fieldDesc *prometheus.Desc, name st
 		fVal = float64(val)
 	case uint64:
 		fVal = float64(val)
-	case int64:
+	case uintptr:
 		fVal = float64(val)
+	case float32:
+		fVal = float64(val)
+	case float64:
+		fVal = val
+
+	case *int:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *int8:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *int16:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *int32:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *int64:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *uint:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
 	case *uint8:
 		if val == nil {
 			return
@@ -46,11 +98,22 @@ func PushMetric(ch chan<- prometheus.Metric, fieldDesc *prometheus.Desc, name st
 			return
 		}
 		fVal = float64(*val)
-	case *int64:
+	case *uintptr:
 		if val == nil {
 			return
 		}
 		fVal = float64(*val)
+	case *float32:
+		if val == nil {
+			return
+		}
+		fVal = float64(*val)
+	case *float64:
+		if val == nil {
+			return
+		}
+		fVal = *val
+
 	default:
 		return
 	}
