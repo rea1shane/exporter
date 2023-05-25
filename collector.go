@@ -166,7 +166,7 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *logr
 
 	if err != nil {
 		if isNoDataError(err) {
-			entry.Debug("collector returned no data: ", err)
+			entry.Debug("collector returned no data")
 		} else {
 			entry.Error("collector failed: ", err)
 		}
