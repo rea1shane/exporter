@@ -1,189 +1,56 @@
-package basexporter
+package exporter
 
 import (
-	"context"
-	"fmt"
+	"errors"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
-	"gopkg.in/alecthomas/kingpin.v2"
-	"net/http"
+	"github.com/prometheus/common/version"
+	"github.com/prometheus/exporter-toolkit/web"
+	"github.com/rea1shane/gooooo/http"
+	cases "github.com/rea1shane/gooooo/strings"
+	"github.com/sirupsen/logrus"
 	"os"
-	"os/signal"
-	"syscall"
-	"time"
+	"runtime"
+	"strings"
 )
 
-var srv *http.Server
+var (
+	e          = exporter{}
+	registered = false
+)
 
-// Exporter 's basic info
-type Exporter struct {
-	metricNamespace string // metricNamespace suggest one word and low case
-	exporterName    string // exporterName suggest snake format, like node_exporter
-	defaultPort     int    // defaultPort is default web listen port of exporter
-	version         string // version is exporter's version
+// Register exporter information.
+// See exporter struct for more information.
+func Register(name, namespace, description, defaultAddress string, logger *logrus.Logger) {
+	e.name = name
+	e.namespace = namespace
+	e.description = description
+	e.defaultAddress = defaultAddress
+	e.logger = logger
+	registered = true
 }
 
-// Args is basic parameters required by the program
-type Args struct {
-	listenAddress          string
-	metricsPath            string
-	disableExporterMetrics bool
-	maxRequests            int
-	logLevel               string
-	ginMode                string
+// Run server to collect metrics. NEED Register first.
+func Run() {
+	if !registered {
+		panic(errors.New("exporter unregistered, need register first"))
+	}
+	e.run()
 }
 
-// BuildExporter return a new Exporter
-func BuildExporter(metricNamespace string, exporterName string, defaultPort int, version string) Exporter {
-	return Exporter{
-		metricNamespace: metricNamespace,
-		exporterName:    exporterName,
-		defaultPort:     defaultPort,
-		version:         version,
-	}
+// exporter information.
+type exporter struct {
+	name           string // name stylized as strings.SnakeCase, e.g. "node_exporter".
+	namespace      string // namespace defines the common namespace to be used by all metrics, e.g. "node".
+	description    string // description
+	defaultAddress string // defaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
+
+	logger *logrus.Logger // logger will be added a logrus.Fields contains "Collector" and "Duration". logger can be controlled logrus.Level by the command line flag.
 }
 
-// BuildArgs return a new Args
-func BuildArgs(listenAddress string, metricsPath string, disableExporterMetrics bool, maxRequests int, logLevel string, ginMode string) Args {
-	return Args{
-		listenAddress:          listenAddress,
-		metricsPath:            metricsPath,
-		disableExporterMetrics: disableExporterMetrics,
-		maxRequests:            maxRequests,
-		logLevel:               logLevel,
-		ginMode:                ginMode,
-	}
-}
-
-func Start(logger *log.Logger, e Exporter, args Args) {
-	switch args.logLevel {
-	case "debug":
-		logger.SetLevel(log.DebugLevel)
-	case "info":
-		logger.SetLevel(log.InfoLevel)
-	case "warn":
-		logger.SetLevel(log.WarnLevel)
-	case "error":
-		logger.SetLevel(log.ErrorLevel)
-	default:
-		panic("log level unknown: " + args.logLevel + " (run -h get more information)")
-	}
-
-	switch args.ginMode {
-	case "debug":
-		gin.SetMode(gin.DebugMode)
-	case "release":
-		gin.SetMode(gin.ReleaseMode)
-	case "test":
-		gin.SetMode(gin.TestMode)
-	default:
-		panic("gin mode unknown: " + args.ginMode + " (run -h get more information)")
-	}
-
-	displayName := camelString(e.exporterName)
-	logger.Info("Starting " + displayName + ", version: " + e.version)
-
-	app := gin.New()
-	app.Use(
-		toStdout(logger),
-		gin.Recovery(),
-	)
-	app.GET("/", gin.WrapF(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`<html>
-			<head><title>` + displayName + `</title></head>
-			<body>
-			<h1>` + displayName + `</h1>
-			<p><a href="` + args.metricsPath + `">Metrics</a></p>
-			</body>
-			</html>`))
-	}))
-	app.GET(args.metricsPath, gin.WrapH(newHandler(e.exporterName, e.metricNamespace, e.version, !args.disableExporterMetrics, args.maxRequests, logger)))
-
-	logger.Info("Listening on address ", args.listenAddress)
-	srv = &http.Server{
-		Addr:    args.listenAddress,
-		Handler: app,
-	}
-	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-	shutdown(logger)
-}
-
-func shutdown(logger *log.Logger) {
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, os.Kill, syscall.SIGQUIT)
-	<-quit
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Errorf("server shutdown\n%+v", err)
-		return
-	}
-}
-
-func camelString(s string) string {
-	data := make([]byte, 0, len(s))
-	j := false
-	k := false
-	num := len(s) - 1
-	for i := 0; i <= num; i++ {
-		d := s[i]
-		if k == false && d >= 'A' && d <= 'Z' {
-			k = true
-		}
-		if d >= 'a' && d <= 'z' && (j || k == false) {
-			if i != 0 {
-				data = append(data, ' ')
-			}
-			d = d - 32
-			j = false
-			k = true
-		}
-		if k && d == '_' && num > i && s[i+1] >= 'a' && s[i+1] <= 'z' {
-			j = true
-			continue
-		}
-		data = append(data, d)
-	}
-	return string(data[:])
-}
-
-func toStdout(logger *log.Logger) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		startTime := time.Now()
-		c.Next()
-		endTime := time.Now()
-		latencyTime := endTime.Sub(startTime)
-
-		reqMethod := c.Request.Method
-		reqUri := c.Request.RequestURI
-		statusCode := c.Writer.Status()
-		clientIP := c.ClientIP()
-
-		entry := logger.
-			WithField("status_code", statusCode)
-
-		if statusCode == 200 {
-			entry.Infof("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
-		} else if statusCode == 404 {
-			entry.Warnf("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
-		} else {
-			entry.Errorf("%15v | %15v | %7v %v", latencyTime, clientIP, reqMethod, reqUri)
-		}
-	}
-}
-
-// ParseArgs You can implement another yourself if you need
-func ParseArgs(defaultPort int) Args {
+// run server to collect metrics.
+func (e exporter) run() {
 	var (
-		listenAddress = kingpin.Flag(
-			"web.listen-address",
-			"Address on which to expose metrics and web interface.",
-		).Default(fmt.Sprintf(":%d", defaultPort)).String()
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
 			"Path under which to expose metrics.",
@@ -191,24 +58,90 @@ func ParseArgs(defaultPort int) Args {
 		disableExporterMetrics = kingpin.Flag(
 			"web.disable-exporter-metrics",
 			"Exclude metrics about the exporter itself (promhttp_*, process_*, go_*).",
-		).Default("false").Bool()
+		).Bool()
 		maxRequests = kingpin.Flag(
 			"web.max-requests",
 			"Maximum number of parallel scrape requests. Use 0 to disable.",
 		).Default("40").Int()
+		disableDefaultCollectors = kingpin.Flag(
+			"collector.disable-defaults",
+			"Set all collectors to disabled by default.",
+		).Default("false").Bool()
+		maxProcs = kingpin.Flag(
+			"runtime.gomaxprocs",
+			"The target number of CPUs Go will run on (GOMAXPROCS)",
+		).Envar("GOMAXPROCS").Default("1").Int()
+		address = kingpin.Flag(
+			"web.listen-address",
+			"Address on which to expose metrics and web interface. Not support multiple addresses.",
+		).Default(e.defaultAddress).String()
+
 		logLevel = kingpin.Flag(
 			"log.level",
 			"Only log messages with the given severity or above. One of: [debug, info, warn, error]",
 		).Default("info").String()
-		ginMode = kingpin.Flag(
-			"gin.mode",
-			"Gin's mode, suggest release mode in production. One of: [debug, release, test]",
-		).Default("release").String()
+		latencyThreshold = kingpin.Flag(
+			"web.latency_threshold",
+			"When the latency exceeds the threshold, the log level will change from INFO to WARN. Use 0 to disable.",
+		).Default("0").Duration()
 	)
-
+	kingpin.Version(version.Print(e.name))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	return BuildArgs(*listenAddress, *metricsPath, *disableExporterMetrics, *maxRequests, *logLevel, *ginMode)
+	level, err := logrus.ParseLevel(*logLevel)
+	if err != nil {
+		e.logger.Fatal(err)
+	}
+	e.logger.SetLevel(level)
+
+	if *disableDefaultCollectors {
+		DisableDefaultCollectors()
+	}
+	e.logger.Infof("Starting %s", e.name)
+	e.logger.Infof("version: %s", version.Info())
+	e.logger.Infof("build context: %s", version.BuildContext())
+
+	runtime.GOMAXPROCS(*maxProcs)
+	e.logger.Debugf("Go MAXPROCS: %d", runtime.GOMAXPROCS(0))
+
+	handler := http.NewHandler(e.logger, *latencyThreshold)
+	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, e.logger)))
+	if *metricsPath != "/" {
+		displayName, _ := cases.ConvertCase(e.name, cases.PascalSnakeCase)
+		landingConfig := web.LandingConfig{
+			Name:        strings.ReplaceAll(displayName, "_", " "),
+			Description: e.description,
+			Version:     version.Info(),
+			Links: []web.LandingLinks{
+				{
+					Address: *metricsPath,
+					Text:    "Metrics",
+				},
+			},
+		}
+		landingPage, err := web.NewLandingPage(landingConfig)
+		if err != nil {
+			e.logger.Fatal(err)
+		}
+		handler.GET("/", gin.WrapH(landingPage))
+	}
+
+	addr := resolveAddress(*address)
+	e.logger.Infof("Listening and serving HTTP on %s", addr)
+	handler.Run(addr)
+}
+
+// resolveAddress copy from gin.resolveAddress
+func resolveAddress(addr string) string {
+	switch addr {
+	case "":
+		if port := os.Getenv("PORT"); port != "" {
+			return ":" + port
+		}
+		return ":8080"
+	default:
+		return addr
+	}
 }

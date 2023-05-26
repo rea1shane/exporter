@@ -1,38 +1,45 @@
-package basexporter
+package exporter
 
 import (
 	"fmt"
 	"github.com/prometheus/client_golang/prometheus"
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
-	stdlog "log"
+	"github.com/prometheus/common/version"
+	"github.com/sirupsen/logrus"
 	"net/http"
-	"runtime"
 	"sort"
 )
 
-// handler is a common handler which implement http.Handler
+// handler wraps an unfiltered http.Handler but uses a filtered handler,
+// created on the fly, if filtering is requested. Create instances with
+// newHandler.
 type handler struct {
+	exporterName            string
+	namespace               string
 	unfilteredHandler       http.Handler
 	exporterMetricsRegistry *prometheus.Registry // exporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
 	includeExporterMetrics  bool
 	maxRequests             int
-	logger                  *log.Logger
-	exporterName            string
-	namespace               string
-	version                 string
+	logger                  *logrus.Logger
 }
 
-func newHandler(exporterName string, namespace string, version string, includeExporterMetrics bool, maxRequests int, logger *log.Logger) *handler {
+// Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
+func (h *handler) Println(v ...interface{}) {
+	for i := 0; i < len(v)-1; i++ {
+		v[i] = fmt.Sprint(v[i]) + " "
+	}
+	h.logger.Error(v...)
+}
+
+func newHandler(exporterName string, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
 	h := &handler{
+		exporterName:            exporterName,
+		namespace:               namespace,
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
 		maxRequests:             maxRequests,
 		logger:                  logger,
-		exporterName:            exporterName,
-		namespace:               namespace,
-		version:                 version,
 	}
 	if h.includeExporterMetrics {
 		h.exporterMetricsRegistry.MustRegister(
@@ -41,7 +48,7 @@ func newHandler(exporterName string, namespace string, version string, includeEx
 		)
 	}
 	if innerHandler, err := h.innerHandler(); err != nil {
-		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
+		logger.Fatalf("Couldn't create metrics handler: %s", err)
 	} else {
 		h.unfilteredHandler = innerHandler
 	}
@@ -49,32 +56,34 @@ func newHandler(exporterName string, namespace string, version string, includeEx
 }
 
 // ServeHTTP implements http.Handler.
-func (h *handler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	filters := request.URL.Query()["collect[]"]
+func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	filters := r.URL.Query()["collect[]"]
 	h.logger.Debug("collect query's filters: ", filters)
 
 	if len(filters) == 0 {
 		// No filters, use the prepared unfiltered handler.
-		h.unfilteredHandler.ServeHTTP(writer, request)
+		h.unfilteredHandler.ServeHTTP(w, r)
 		return
 	}
 	// To serve filtered metrics, we create a filtering handler on the fly.
 	filteredHandler, err := h.innerHandler(filters...)
 	if err != nil {
-		h.logger.Warnf("Couldn't create filtered metrics handler\n%+v", err)
-		writer.WriteHeader(http.StatusBadRequest)
-		_, _ = writer.Write([]byte(fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)))
+		errMsg := fmt.Sprintf("Couldn't create filtered metrics handler: %s", err)
+		h.logger.Warn(errMsg)
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(errMsg))
 		return
 	}
-	filteredHandler.ServeHTTP(writer, request)
+	filteredHandler.ServeHTTP(w, r)
 }
 
 // innerHandler is used to create both the one unfiltered http.Handler to be
 // wrapped by the outer handler and also the filtered handlers created on the
 // fly. The former is accomplished by calling innerHandler without any arguments
-// (in which case it will log all the collectors enabled via command-line flags).
+// (in which case it will log all the collectors enabled via command-line
+// flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	targetCollector, err := newTargetCollector(h.exporterName, h.namespace, h.logger, filters...)
+	ck, err := newCollectorKeeper(h.exporterName, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -83,8 +92,8 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	// only once upon startup.
 	if len(filters) == 0 {
 		h.logger.Info("Enabled collectors")
-		var collectors []string
-		for n := range targetCollector.collectors {
+		collectors := []string{}
+		for n := range ck.collectors {
 			collectors = append(collectors, n)
 		}
 		sort.Strings(collectors)
@@ -94,35 +103,22 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(prometheus.NewGaugeFunc(
-		prometheus.GaugeOpts{
-			Namespace: h.namespace,
-			Name:      "build_info",
-			Help: fmt.Sprintf(
-				"A metric with a constant '1' value labeled by version, revision, branch, and goversion from which %s was built.",
-				h.exporterName,
-			),
-			ConstLabels: prometheus.Labels{
-				"version":   h.version,
-				"goversion": runtime.Version(),
-			},
-		},
-		func() float64 { return 1 },
-	))
-	if err := r.Register(targetCollector); err != nil {
-		return nil, fmt.Errorf("couldn't register "+h.namespace+" collector: %s", err)
+	r.MustRegister(version.NewCollector(h.exporterName))
+	if err := r.Register(ck); err != nil {
+		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
 	handler := promhttp.HandlerFor(
 		prometheus.Gatherers{h.exporterMetricsRegistry, r},
 		promhttp.HandlerOpts{
-			ErrorLog:            stdlog.New(h.logger.Out, "", 0),
+			ErrorLog:            h,
 			ErrorHandling:       promhttp.ContinueOnError,
 			MaxRequestsInFlight: h.maxRequests,
 			Registry:            h.exporterMetricsRegistry,
 		},
 	)
 	if h.includeExporterMetrics {
-		// Note that we have to use h.exporterMetricsRegistry here to use the same promhttp metrics for all expositions.
+		// Note that we have to use h.exporterMetricsRegistry here to
+		// use the same promhttp metrics for all expositions.
 		handler = promhttp.InstrumentMetricHandler(
 			h.exporterMetricsRegistry, handler,
 		)

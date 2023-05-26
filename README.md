@@ -1,2 +1,5 @@
-# basexporter
-prometheus exporter framework
+# exporter
+
+Prometheus exporter framework.
+
+Use gin as http server.
