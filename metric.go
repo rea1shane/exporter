@@ -4,17 +4,17 @@ import "github.com/prometheus/client_golang/prometheus"
 
 // TypedDesc contains metric's necessary information
 type TypedDesc struct {
-	desc      *prometheus.Desc
-	valueType prometheus.ValueType
+	Desc      *prometheus.Desc
+	ValueType prometheus.ValueType
 }
 
 func (d *TypedDesc) MustNewConstMetric(value float64, labels ...string) prometheus.Metric {
-	return prometheus.MustNewConstMetric(d.desc, d.valueType, value, labels...)
+	return prometheus.MustNewConstMetric(d.Desc, d.ValueType, value, labels...)
 }
 
 // PushTypedDesc is PushMetric TypedDesc version.
 func PushTypedDesc(ch chan<- prometheus.Metric, d TypedDesc, value interface{}, labelValues ...string) {
-	PushMetric(ch, d.desc, d.valueType, value, labelValues...)
+	PushMetric(ch, d.Desc, d.ValueType, value, labelValues...)
 }
 
 // PushMetric helps construct and convert a variety of value types into Prometheus float64 metrics.
