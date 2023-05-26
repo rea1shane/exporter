@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "example/collector"
 	"github.com/gin-gonic/gin"
 	"github.com/rea1shane/exporter"
 	"github.com/rea1shane/gooooo/log"

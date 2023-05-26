@@ -6,6 +6,7 @@ replace github.com/rea1shane/exporter => ../
 
 require (
 	github.com/gin-gonic/gin v1.9.0
+	github.com/prometheus/client_golang v1.14.0
 	github.com/rea1shane/exporter v0.0.0-00010101000000-000000000000
 	github.com/rea1shane/gooooo v0.6.1
 	github.com/sirupsen/logrus v1.9.2
@@ -38,7 +39,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
-	github.com/prometheus/client_golang v1.14.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/exporter-toolkit v0.10.0 // indirect
