@@ -2,7 +2,7 @@
 
 It helps you to easily build an exporter so that you only need to focus on the metrics themselves and not the exporter.
 
-Different from the Prometheus official exporter, exporter framework use [Gin](https://github.com/gin-gonic/gin) as HTTP server and use [Logrus](https://github.com/sirupsen/logrus) as logger.
+Exporter framework use [Kingpin](https://github.com/alecthomas/kingpin) as command line and flag parser, use [Gin](https://github.com/gin-gonic/gin) as HTTP server and use [Logrus](https://github.com/sirupsen/logrus) as logger.
 
 ## Usage
 
@@ -38,7 +38,7 @@ exporter.Run()
 
 ## Example
 
-See [`_example`](https://github.com/rea1shane/exporter/tree/main/_example) directory.
+See [`_example`](https://github.com/rea1shane/exporter/tree/main/_example) directory. Run `cd _example && go run exporter.go -h` for more information.
 
 ## Tips
 
