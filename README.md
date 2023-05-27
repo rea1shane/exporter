@@ -20,7 +20,7 @@ type myCollector struct {...}
 func (c myCollector) Update(ch chan<- prometheus.Metric) error {...}
 ```
 
-Then, create construct functions and register them in their `init` function:
+Then, create collectors' construct functions and register them in their `init` function:
 
 ```go
 func newMyCollector(namespace string, logger *logrus.Entry) (exporter.Collector, error) {...}
