@@ -48,4 +48,4 @@ Gin sets itself using environment variables, view [Gin documentation](https://gi
 
 > ATTENTION
 >
-> You must set `defaultAddress` to `""` during register exporter for gin to be able to read the environment variable `PORT`. View the `resolveAddress` function in the `exporter.go` for more information.
+> You must set `defaultAddress` to `""` during register exporter for gin to be able to read the environment variable `PORT`. View the `resolveAddress` function in the [`exporter.go`](https://github.com/rea1shane/exporter/blob/main/exporter.go) for more information.
