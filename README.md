@@ -6,35 +6,35 @@ Exporter framework use [Kingpin](https://github.com/alecthomas/kingpin) as comma
 
 ## Usage
 
-First of all, register exporter:
+1.  Register exporter:
 
-```go
-exporter.Register("name", "common_namespace", "Description.", ":{PORT}", logrusLogger)
-```
+    ```go
+    exporter.Register("name", "common_namespace", "Description.", ":{PORT}", logrusLogger)
+    ```
 
-Second, create some collectors:
+1.  Create some collectors:
 
-```go
-type myCollector struct {...}
+    ```go
+    type myCollector struct {...}
+    
+    func (c myCollector) Update(ch chan<- prometheus.Metric) error {...}
+    ```
 
-func (c myCollector) Update(ch chan<- prometheus.Metric) error {...}
-```
+1.  Create collectors' construct functions and register them in their `init` function:
 
-Then, create collectors' construct functions and register them in their `init` function:
+    ```go
+    func newMyCollector(namespace string, logger *logrus.Entry) (exporter.Collector, error) {...}
+    
+    func init() {
+        exporter.RegisterCollector("collector_name", exporter.DefaultEnabled, newMyCollector)
+    }
+    ```
 
-```go
-func newMyCollector(namespace string, logger *logrus.Entry) (exporter.Collector, error) {...}
+1.  Run exporter:
 
-func init() {
-    exporter.RegisterCollector("collector_name", exporter.DefaultEnabled, newMyCollector)
-}
-```
-
-Finally, run exporter:
-
-```go
-exporter.Run()
-```
+    ```go
+    exporter.Run()
+    ```
 
 ## Example
 
