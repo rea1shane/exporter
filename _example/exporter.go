@@ -11,7 +11,7 @@ import (
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	logger := logrus.New()
-	formatter := log.GetFormatter()
+	formatter := log.NewFormatter()
 	formatter.FieldsOrder = []string{"StatusCode", "Latency", "Collector", "Duration"}
 	logger.SetFormatter(formatter)
 	exporter.Register("test_exporter", "test", "This is a test exporter.", ":7777", logger)

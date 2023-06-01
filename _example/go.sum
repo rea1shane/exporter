@@ -80,8 +80,8 @@ github.com/prometheus/exporter-toolkit v0.10.0 h1:yOAzZTi4M22ZzVxD+fhy1URTuNRj/3
 github.com/prometheus/exporter-toolkit v0.10.0/go.mod h1:+sVFzuvV5JDyw+Ih6p3zFxZNVnKQa3x5qPmDSiPu4ZY=
 github.com/prometheus/procfs v0.9.0 h1:wzCHvIvM5SxWqYvwgVL7yJY8Lz3PKn49KQtpgMYJfhI=
 github.com/prometheus/procfs v0.9.0/go.mod h1:+pB4zwohETzFnmlpe6yd2lSc+0/46IYZRB/chUwxUZY=
-github.com/rea1shane/gooooo v0.6.1 h1:359He3IzdWPf9aDT2/JRQxXi01QgmD8+2JJY8bpeMYo=
-github.com/rea1shane/gooooo v0.6.1/go.mod h1:nQtI4AeABEoflf6bJiA07/6wEtF/Q4oUD+LRQPNjeWY=
+github.com/rea1shane/gooooo v0.7.0 h1:RHP2R2QjySRHSLHP9hvLmFnaxZiaJxRurTUOSc8Agug=
+github.com/rea1shane/gooooo v0.7.0/go.mod h1:nQtI4AeABEoflf6bJiA07/6wEtF/Q4oUD+LRQPNjeWY=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/sirupsen/logrus v1.9.2 h1:oxx1eChJGI6Uks2ZC4W1zpLlVgqB8ner4EuQwV4Ik1Y=
 github.com/sirupsen/logrus v1.9.2/go.mod h1:naHLuLoDiP4jHNo9R0sCBMtWGeIprob74mVsIT4qYEQ=
