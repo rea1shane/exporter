@@ -42,7 +42,7 @@ See [`_example`](https://github.com/rea1shane/exporter/tree/main/_example) direc
 
 ## Tips
 
-### environment variables
+### Environment variables
 
 Gin sets itself using environment variables, view [Gin documentation](https://github.com/gin-gonic/gin#documentation) for more information.
 
