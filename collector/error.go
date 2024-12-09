@@ -8,5 +8,5 @@ import (
 var ErrNoData = errors.New("collector returned no data")
 
 func isNoDataError(err error) bool {
-	return errors.Is(err, ErrNoData)
+	return err == ErrNoData
 }
