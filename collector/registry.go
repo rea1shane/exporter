@@ -7,15 +7,15 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+const (
+	DefaultEnabled  = true
+	DefaultDisabled = false
+)
+
 var (
 	factories        = make(map[string]func(namespace string, logger *logrus.Entry) (Collector, error)) // factories records all collector's construction method
 	collectorState   = make(map[string]*bool)                                                           // collectorState records all collector's default state (enable or disable)
 	forcedCollectors = map[string]bool{}                                                                // forcedCollectors collectors which have been explicitly enabled or disabled
-)
-
-const (
-	DefaultEnabled  = true
-	DefaultDisabled = false
 )
 
 func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *logrus.Entry) (Collector, error)) {
