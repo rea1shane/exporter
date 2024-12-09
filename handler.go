@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"slices"
 	"sort"
@@ -10,7 +11,6 @@ import (
 	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
 	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/sirupsen/logrus"
 
 	"github.com/rea1shane/exporter/collector"
 )
@@ -26,16 +26,10 @@ type handler struct {
 	exporterMetricsRegistry *prometheus.Registry // exporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
 	includeExporterMetrics  bool
 	maxRequests             int
-	logger                  *logrus.Logger
+	logger                  *slog.Logger
 }
 
-// Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
-// TODO detects prometheus.MultiError and formats the contained errors into one line
-func (h *handler) Println(v ...any) {
-	h.logger.Error(v...)
-}
-
-func newHandler(name, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
+func newHandler(name, namespace string, includeExporterMetrics bool, maxRequests int, logger *slog.Logger) *handler {
 	h := &handler{
 		name:                    name,
 		namespace:               namespace,
@@ -51,7 +45,7 @@ func newHandler(name, namespace string, includeExporterMetrics bool, maxRequests
 		)
 	}
 	if innerHandler, err := h.innerHandler(); err != nil {
-		logger.Panicf("Couldn't create metrics handler: %s", err)
+		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
 	} else {
 		h.unfilteredHandler = innerHandler
 	}
@@ -137,7 +131,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 		handler = promhttp.HandlerFor(
 			prometheus.Gatherers{h.exporterMetricsRegistry, r},
 			promhttp.HandlerOpts{
-				ErrorLog:            h,
+				ErrorLog:            slog.NewLogLogger(h.logger.Handler(), slog.LevelError),
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: h.maxRequests,
 				Registry:            h.exporterMetricsRegistry,
@@ -152,7 +146,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 		handler = promhttp.HandlerFor(
 			r,
 			promhttp.HandlerOpts{
-				ErrorLog:            h,
+				ErrorLog:            slog.NewLogLogger(h.logger.Handler(), slog.LevelError),
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: h.maxRequests,
 			},
