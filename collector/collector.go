@@ -163,12 +163,6 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
 }
 
-// Collector is the interface a collector has to implement.
-type Collector interface {
-	// Get new metrics and expose them via prometheus registry.
-	Update(ch chan<- prometheus.Metric) error
-}
-
 // ErrNoData indicates the collector found no data to collect, but had no other error.
 var ErrNoData = errors.New("collector returned no data")
 
