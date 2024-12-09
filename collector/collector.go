@@ -49,12 +49,12 @@ func NewCollection(snakeCaseName, namespace string, logger *slog.Logger, filters
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			c, err := factories[key](namespace, logger.With("collector", key))
+			collector, err := factories[key](namespace, logger.With("collector", key))
 			if err != nil {
 				return nil, err
 			}
-			collectors[key] = c
-			initiatedCollectors[key] = c
+			collectors[key] = collector
+			initiatedCollectors[key] = collector
 		}
 	}
 	return &Collection{
