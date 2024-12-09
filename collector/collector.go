@@ -27,7 +27,7 @@ type Collection struct {
 
 // NewCollection creates a new Collection.
 // Namespace defines the common namespace to be used by all metrics.
-func NewCollection(exporterName, namespace string, logger *slog.Logger, filters ...string) (*Collection, error) {
+func NewCollection(snakeCaseName, namespace string, logger *slog.Logger, filters ...string) (*Collection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -63,7 +63,7 @@ func NewCollection(exporterName, namespace string, logger *slog.Logger, filters 
 		scrapeDurationDesc: metric.TypedDesc{
 			Desc: prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
-				exporterName+": Duration of a collector scrape.",
+				snakeCaseName+": Duration of a collector scrape.",
 				[]string{"collector"},
 				nil,
 			),
@@ -72,7 +72,7 @@ func NewCollection(exporterName, namespace string, logger *slog.Logger, filters 
 		scrapeSuccessDesc: metric.TypedDesc{
 			Desc: prometheus.NewDesc(
 				prometheus.BuildFQName(namespace, "scrape", "collector_success"),
-				exporterName+": Whether a collector succeeded.",
+				snakeCaseName+": Whether a collector succeeded.",
 				[]string{"collector"},
 				nil,
 			),
