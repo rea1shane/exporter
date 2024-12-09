@@ -3,44 +3,31 @@ package collector
 
 import (
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/sirupsen/logrus"
+
+	"github.com/rea1shane/exporter/metric"
 )
 
 var (
 	initiatedCollectorsMtx = sync.Mutex{}               // initiatedCollectorsMtx avoid thread conflicts
-	initiatedCollectors    = make(map[string]Collector) // initiatedCollectors record the collectors that have been initialized in the method newCollectors (To reduce the collector's construction method call)
+	initiatedCollectors    = make(map[string]Collector) // initiatedCollectors record the collectors that have been initialized in the method newCollectorCollection (To reduce the collector's construction method call)
 )
 
-// Namespace defines the common namespace to be used by all metrics.
-const namespace = "node"
-
-var (
-	scrapeDurationDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
-		"node_exporter: Duration of a collector scrape.",
-		[]string{"collector"},
-		nil,
-	)
-	scrapeSuccessDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "scrape", "collector_success"),
-		"node_exporter: Whether a collector succeeded.",
-		[]string{"collector"},
-		nil,
-	)
-)
-
-// NodeCollector implements the prometheus.Collector interface.
-type NodeCollector struct {
-	Collectors map[string]Collector
-	logger     *slog.Logger
+// collectorCollection implements the prometheus.Collector interface.
+type collectorCollection struct {
+	collectors         map[string]Collector
+	logger             *logrus.Logger
+	scrapeDurationDesc metric.TypedDesc
+	scrapeSuccessDesc  metric.TypedDesc
 }
 
-// NewNodeCollector creates a new NodeCollector.
-func NewNodeCollector(logger *slog.Logger, filters ...string) (*NodeCollector, error) {
+// newCollectorCollection creates a new collectorCollection.
+// Namespace defines the common namespace to be used by all metrics.
+func newCollectorCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*collectorCollection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -62,37 +49,58 @@ func NewNodeCollector(logger *slog.Logger, filters ...string) (*NodeCollector, e
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			collector, err := factories[key](logger.With("collector", key))
+			c, err := factories[key](namespace, logger.WithField("collector", key))
 			if err != nil {
 				return nil, err
 			}
-			collectors[key] = collector
-			initiatedCollectors[key] = collector
+			collectors[key] = c
+			initiatedCollectors[key] = c
 		}
 	}
-	return &NodeCollector{Collectors: collectors, logger: logger}, nil
+	return &collectorCollection{
+		collectors: collectors,
+		logger:     logger,
+		scrapeDurationDesc: metric.TypedDesc{
+			Desc: prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "scrape", "collector_duration_seconds"),
+				exporterName+": Duration of a collector scrape.",
+				[]string{"collector"},
+				nil,
+			),
+			ValueType: prometheus.GaugeValue,
+		},
+		scrapeSuccessDesc: metric.TypedDesc{
+			Desc: prometheus.NewDesc(
+				prometheus.BuildFQName(namespace, "scrape", "collector_success"),
+				exporterName+": Whether a collector succeeded.",
+				[]string{"collector"},
+				nil,
+			),
+			ValueType: prometheus.GaugeValue,
+		},
+	}, nil
 }
 
 // Describe implements the prometheus.Collector interface.
-func (n NodeCollector) Describe(ch chan<- *prometheus.Desc) {
-	ch <- scrapeDurationDesc
-	ch <- scrapeSuccessDesc
+func (cc collectorCollection) Describe(ch chan<- *prometheus.Desc) {
+	ch <- cc.scrapeDurationDesc.Desc
+	ch <- cc.scrapeSuccessDesc.Desc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (n NodeCollector) Collect(ch chan<- prometheus.Metric) {
+func (cc collectorCollection) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(n.Collectors))
-	for name, c := range n.Collectors {
+	wg.Add(len(cc.collectors))
+	for name, c := range cc.collectors {
 		go func(name string, c Collector) {
-			execute(name, c, ch, n.logger)
+			execute(name, c, ch, cc.logger, cc.scrapeDurationDesc, cc.scrapeSuccessDesc)
 			wg.Done()
 		}(name, c)
 	}
 	wg.Wait()
 }
 
-func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog.Logger) {
+func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *logrus.Logger, scrapeDurationDesc, scrapeSuccessDesc metric.TypedDesc) {
 	begin := time.Now()
 	err := c.Update(ch)
 	duration := time.Since(begin)
@@ -109,6 +117,6 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog
 		logger.Debug("collector succeeded", "name", name, "duration_seconds", duration.Seconds())
 		success = 1
 	}
-	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
-	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
+	scrapeDurationDesc.PushMetric(ch, duration.Seconds(), name)
+	scrapeSuccessDesc.PushMetric(ch, success, name)
 }
