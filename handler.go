@@ -19,7 +19,7 @@ import (
 // created on the fly, if filtering is requested. Create instances with
 // newHandler.
 type handler struct {
-	name                    string
+	snakeCaseName           string
 	namespace               string
 	unfilteredHandler       http.Handler
 	enabledCollectors       []string             // enabledCollectors list is used for logging and filtering
@@ -29,9 +29,9 @@ type handler struct {
 	logger                  *slog.Logger
 }
 
-func newHandler(name, namespace string, includeExporterMetrics bool, maxRequests int, logger *slog.Logger) *handler {
+func newHandler(snakeCaseName, namespace string, includeExporterMetrics bool, maxRequests int, logger *slog.Logger) *handler {
 	h := &handler{
-		name:                    name,
+		snakeCaseName:           snakeCaseName,
 		namespace:               namespace,
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
@@ -75,8 +75,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	filters := &collects
 	if len(excludes) > 0 {
-		// In exclude mode, filtered collectors = enabled - excluded.
-		var f []string
+		// In exclude mode, filtered collectors = enabled - excludeed.
+		f := []string{}
 		for _, c := range h.enabledCollectors {
 			if (slices.Index(excludes, c)) == -1 {
 				f = append(f, c)
@@ -102,7 +102,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // (in which case it will log all the collectors enabled via command-line
 // flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	collection, err := collector.NewCollection(h.name, h.namespace, h.logger, filters...)
+	collection, err := collector.NewCollection(h.snakeCaseName, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -121,7 +121,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(versioncollector.NewCollector(h.name))
+	r.MustRegister(versioncollector.NewCollector(h.snakeCaseName))
 	if err := r.Register(collection); err != nil {
 		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
