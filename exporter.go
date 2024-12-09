@@ -2,22 +2,23 @@ package exporter
 
 import (
 	"net/http"
-	_ "net/http/pprof"
 	"os"
 	"os/user"
 	"runtime"
-
-	"github.com/prometheus/common/promslog"
-	"github.com/prometheus/common/promslog/flag"
 
 	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"github.com/prometheus/node_exporter/collector"
+	"github.com/sirupsen/logrus"
+
+	"github.com/rea1shane/exporter/collector"
 )
 
-func main() {
+type Exporter struct {
+}
+
+func New(logger *logrus.Logger, snakeCaseName, titleCaseName, description, namespace, defaultAddress string, warningRunAsRoot bool) {
 	var (
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
@@ -38,33 +39,30 @@ func main() {
 		maxProcs = kingpin.Flag(
 			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
-		toolkitFlags = kingpinflag.AddFlags(kingpin.CommandLine, ":9100")
+		toolkitFlags = kingpinflag.AddFlags(kingpin.CommandLine, defaultAddress)
 	)
 
-	promslogConfig := &promslog.Config{}
-	flag.AddFlags(kingpin.CommandLine, promslogConfig)
-	kingpin.Version(version.Print("node_exporter"))
+	kingpin.Version(version.Print(snakeCaseName))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-	logger := promslog.New(promslogConfig)
 
 	if *disableDefaultCollectors {
 		collector.DisableDefaultCollectors()
 	}
-	logger.Info("Starting node_exporter", "version", version.Info())
+	logger.Infof("Starting %s %s", snakeCaseName, version.Info())
 	logger.Info("Build context", "build_context", version.BuildContext())
-	if user, err := user.Current(); err == nil && user.Uid == "0" {
-		logger.Warn("Node Exporter is running as root user. This exporter is designed to run as unprivileged user, root is not required.")
+	if user, err := user.Current(); warningRunAsRoot && err == nil && user.Uid == "0" {
+		logger.Warnf("%s is running as root user. This exporter is designed to run as unprivileged user, root is not required.", titleCaseName)
 	}
 	runtime.GOMAXPROCS(*maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	http.Handle(*metricsPath, newHandler(!*disableExporterMetrics, *maxRequests, logger))
+	http.Handle(*metricsPath, newHandler(snakeCaseName, namespace, !*disableExporterMetrics, *maxRequests, logger))
 	if *metricsPath != "/" {
 		landingConfig := web.LandingConfig{
-			Name:        "Node Exporter",
-			Description: "Prometheus Node Exporter",
+			Name:        titleCaseName,
+			Description: description,
 			Version:     version.Info(),
 			Links: []web.LandingLinks{
 				{
