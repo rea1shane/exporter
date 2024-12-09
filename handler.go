@@ -3,30 +3,42 @@ package exporter
 import (
 	"fmt"
 	"net/http"
+	"slices"
 	"sort"
 
 	"github.com/prometheus/client_golang/prometheus"
+	promcollectors "github.com/prometheus/client_golang/prometheus/collectors"
+	versioncollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/node_exporter/collector"
+	"github.com/sirupsen/logrus"
+
+	"github.com/rea1shane/exporter/collector"
 )
 
 // handler wraps an unfiltered http.Handler but uses a filtered handler,
 // created on the fly, if filtering is requested. Create instances with
 // newHandler.
 type handler struct {
-	unfilteredHandler http.Handler
-	// enabledCollectors list is used for logging and filtering
-	enabledCollectors []string
-	// exporterMetricsRegistry is a separate registry for the metrics about
-	// the exporter itself.
-	exporterMetricsRegistry *prometheus.Registry
+	exporterName            string
+	namespace               string
+	unfilteredHandler       http.Handler
+	enabledCollectors       []string             // enabledCollectors list is used for logging and filtering
+	exporterMetricsRegistry *prometheus.Registry // exporterMetricsRegistry is a separate registry for the metrics about the exporter itself.
 	includeExporterMetrics  bool
 	maxRequests             int
-	logger                  *slog.Logger
+	logger                  *logrus.Logger
 }
 
-func newHandler(includeExporterMetrics bool, maxRequests int, logger *slog.Logger) *handler {
+// Println implement promhttp.Logger, used by promhttp.HandlerOpts ErrorLog.
+// TODO detects prometheus.MultiError and formats the contained errors into one line
+func (h *handler) Println(v ...any) {
+	h.logger.Error(v...)
+}
+
+func newHandler(exporterName, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
 	h := &handler{
+		exporterName:            exporterName,
+		namespace:               namespace,
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
 		maxRequests:             maxRequests,
@@ -39,7 +51,7 @@ func newHandler(includeExporterMetrics bool, maxRequests int, logger *slog.Logge
 		)
 	}
 	if innerHandler, err := h.innerHandler(); err != nil {
-		panic(fmt.Sprintf("Couldn't create metrics handler: %s", err))
+		logger.Panicf("Couldn't create metrics handler: %s", err)
 	} else {
 		h.unfilteredHandler = innerHandler
 	}
@@ -69,8 +81,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	filters := &collects
 	if len(excludes) > 0 {
-		// In exclude mode, filtered collectors = enabled - excludeed.
-		f := []string{}
+		// In exclude mode, filtered collectors = enabled - excluded.
+		var f []string
 		for _, c := range h.enabledCollectors {
 			if (slices.Index(excludes, c)) == -1 {
 				f = append(f, c)
@@ -96,7 +108,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // (in which case it will log all the collectors enabled via command-line
 // flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	nc, err := collector.NewNodeCollector(h.logger, filters...)
+	collection, err := collector.NewCollection(h.exporterName, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -105,7 +117,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	// only once upon startup.
 	if len(filters) == 0 {
 		h.logger.Info("Enabled collectors")
-		for n := range nc.Collectors {
+		for n := range collection.Collectors {
 			h.enabledCollectors = append(h.enabledCollectors, n)
 		}
 		sort.Strings(h.enabledCollectors)
@@ -115,9 +127,9 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(versioncollector.NewCollector("node_exporter"))
-	if err := r.Register(nc); err != nil {
-		return nil, fmt.Errorf("couldn't register node collector: %s", err)
+	r.MustRegister(versioncollector.NewCollector(h.exporterName))
+	if err := r.Register(collection); err != nil {
+		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
 
 	var handler http.Handler
@@ -125,7 +137,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 		handler = promhttp.HandlerFor(
 			prometheus.Gatherers{h.exporterMetricsRegistry, r},
 			promhttp.HandlerOpts{
-				ErrorLog:            slog.NewLogLogger(h.logger.Handler(), slog.LevelError),
+				ErrorLog:            h,
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: h.maxRequests,
 				Registry:            h.exporterMetricsRegistry,
@@ -140,7 +152,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 		handler = promhttp.HandlerFor(
 			r,
 			promhttp.HandlerOpts{
-				ErrorLog:            slog.NewLogLogger(h.logger.Handler(), slog.LevelError),
+				ErrorLog:            h,
 				ErrorHandling:       promhttp.ContinueOnError,
 				MaxRequestsInFlight: h.maxRequests,
 			},
