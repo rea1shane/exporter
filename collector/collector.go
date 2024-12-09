@@ -17,9 +17,9 @@ var (
 	initiatedCollectors    = make(map[string]Collector) // initiatedCollectors record the collectors that have been initialized in the method NewCollectorCollection (To reduce the collector's construction method call)
 )
 
-// collectorCollection implements the prometheus.Collector interface.
-type collectorCollection struct {
-	collectors         map[string]Collector
+// Collection implements the prometheus.Collector interface.
+type Collection struct {
+	Collectors         map[string]Collector
 	logger             *logrus.Logger
 	scrapeDurationDesc metric.TypedDesc
 	scrapeSuccessDesc  metric.TypedDesc
@@ -27,7 +27,7 @@ type collectorCollection struct {
 
 // NewCollectorCollection creates a new collectorCollection.
 // Namespace defines the common namespace to be used by all metrics.
-func NewCollectorCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*collectorCollection, error) {
+func NewCollectorCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*Collection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -57,8 +57,8 @@ func NewCollectorCollection(exporterName, namespace string, logger *logrus.Logge
 			initiatedCollectors[key] = c
 		}
 	}
-	return &collectorCollection{
-		collectors: collectors,
+	return &Collection{
+		Collectors: collectors,
 		logger:     logger,
 		scrapeDurationDesc: metric.TypedDesc{
 			Desc: prometheus.NewDesc(
@@ -82,20 +82,20 @@ func NewCollectorCollection(exporterName, namespace string, logger *logrus.Logge
 }
 
 // Describe implements the prometheus.Collector interface.
-func (cc collectorCollection) Describe(ch chan<- *prometheus.Desc) {
-	ch <- cc.scrapeDurationDesc.Desc
-	ch <- cc.scrapeSuccessDesc.Desc
+func (c Collection) Describe(ch chan<- *prometheus.Desc) {
+	ch <- c.scrapeDurationDesc.Desc
+	ch <- c.scrapeSuccessDesc.Desc
 }
 
 // Collect implements the prometheus.Collector interface.
-func (cc collectorCollection) Collect(ch chan<- prometheus.Metric) {
+func (c Collection) Collect(ch chan<- prometheus.Metric) {
 	wg := sync.WaitGroup{}
-	wg.Add(len(cc.collectors))
-	for name, c := range cc.collectors {
-		go func(name string, c Collector) {
-			execute(name, c, ch, cc.logger, cc.scrapeDurationDesc, cc.scrapeSuccessDesc)
+	wg.Add(len(c.Collectors))
+	for name, collector := range c.Collectors {
+		go func(name string, collector Collector) {
+			execute(name, collector, ch, c.logger, c.scrapeDurationDesc, c.scrapeSuccessDesc)
 			wg.Done()
-		}(name, c)
+		}(name, collector)
 	}
 	wg.Wait()
 }
