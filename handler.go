@@ -19,7 +19,7 @@ import (
 // created on the fly, if filtering is requested. Create instances with
 // newHandler.
 type handler struct {
-	exporterName            string
+	name                    string
 	namespace               string
 	unfilteredHandler       http.Handler
 	enabledCollectors       []string             // enabledCollectors list is used for logging and filtering
@@ -35,9 +35,9 @@ func (h *handler) Println(v ...any) {
 	h.logger.Error(v...)
 }
 
-func newHandler(exporterName, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
+func newHandler(name, namespace string, includeExporterMetrics bool, maxRequests int, logger *logrus.Logger) *handler {
 	h := &handler{
-		exporterName:            exporterName,
+		name:                    name,
 		namespace:               namespace,
 		exporterMetricsRegistry: prometheus.NewRegistry(),
 		includeExporterMetrics:  includeExporterMetrics,
@@ -108,7 +108,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // (in which case it will log all the collectors enabled via command-line
 // flags).
 func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
-	collection, err := collector.NewCollection(h.exporterName, h.namespace, h.logger, filters...)
+	collection, err := collector.NewCollection(h.name, h.namespace, h.logger, filters...)
 	if err != nil {
 		return nil, fmt.Errorf("couldn't create collector: %s", err)
 	}
@@ -127,7 +127,7 @@ func (h *handler) innerHandler(filters ...string) (http.Handler, error) {
 	}
 
 	r := prometheus.NewRegistry()
-	r.MustRegister(versioncollector.NewCollector(h.exporterName))
+	r.MustRegister(versioncollector.NewCollector(h.name))
 	if err := r.Register(collection); err != nil {
 		return nil, fmt.Errorf("couldn't register %s collector: %s", h.namespace, err)
 	}
