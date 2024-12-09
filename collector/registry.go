@@ -2,9 +2,9 @@ package collector
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -13,12 +13,12 @@ const (
 )
 
 var (
-	factories        = make(map[string]func(namespace string, logger *logrus.Entry) (Collector, error)) // factories records all collector's construction method
-	collectorState   = make(map[string]*bool)                                                           // collectorState records all collector's default state (enabled or disabled)
-	forcedCollectors = map[string]bool{}                                                                // forcedCollectors will record collectors that have explicitly declared state
+	factories        = make(map[string]func(namespace string, logger *slog.Logger) (Collector, error)) // factories records all collector's construction method
+	collectorState   = make(map[string]*bool)                                                          // collectorState records all collector's default state (enabled or disabled)
+	forcedCollectors = map[string]bool{}                                                               // forcedCollectors will record collectors that have explicitly declared state
 )
 
-func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *logrus.Entry) (Collector, error)) {
+func RegisterCollector(collector string, isDefaultEnabled bool, factory func(namespace string, logger *slog.Logger) (Collector, error)) {
 	var helpDefaultState string
 	if isDefaultEnabled {
 		helpDefaultState = "enabled"

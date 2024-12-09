@@ -3,11 +3,11 @@ package collector
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/sirupsen/logrus"
 
 	"github.com/rea1shane/exporter/metric"
 )
@@ -20,14 +20,14 @@ var (
 // Collection implements the prometheus.Collector interface.
 type Collection struct {
 	Collectors         map[string]Collector
-	logger             *logrus.Logger
+	logger             *slog.Logger
 	scrapeDurationDesc metric.TypedDesc
 	scrapeSuccessDesc  metric.TypedDesc
 }
 
 // NewCollection creates a new Collection.
 // Namespace defines the common namespace to be used by all metrics.
-func NewCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*Collection, error) {
+func NewCollection(exporterName, namespace string, logger *slog.Logger, filters ...string) (*Collection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
@@ -49,7 +49,7 @@ func NewCollection(exporterName, namespace string, logger *logrus.Logger, filter
 		if collector, ok := initiatedCollectors[key]; ok {
 			collectors[key] = collector
 		} else {
-			c, err := factories[key](namespace, logger.WithField("collector", key))
+			c, err := factories[key](namespace, logger.With("collector", key))
 			if err != nil {
 				return nil, err
 			}
@@ -100,7 +100,7 @@ func (c Collection) Collect(ch chan<- prometheus.Metric) {
 	wg.Wait()
 }
 
-func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *logrus.Logger, scrapeDurationDesc, scrapeSuccessDesc metric.TypedDesc) {
+func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog.Logger, scrapeDurationDesc, scrapeSuccessDesc metric.TypedDesc) {
 	begin := time.Now()
 	err := c.Update(ch)
 	duration := time.Since(begin)
