@@ -14,7 +14,7 @@ import (
 
 var (
 	initiatedCollectorsMtx = sync.Mutex{}               // initiatedCollectorsMtx avoid thread conflicts
-	initiatedCollectors    = make(map[string]Collector) // initiatedCollectors record the collectors that have been initialized in the method NewCollectorCollection (To reduce the collector's construction method call)
+	initiatedCollectors    = make(map[string]Collector) // initiatedCollectors record the collectors that have been initialized in the method NewCollection (To reduce the collector's construction method call)
 )
 
 // Collection implements the prometheus.Collector interface.
@@ -25,9 +25,9 @@ type Collection struct {
 	scrapeSuccessDesc  metric.TypedDesc
 }
 
-// NewCollectorCollection creates a new collectorCollection.
+// NewCollection creates a new Collection.
 // Namespace defines the common namespace to be used by all metrics.
-func NewCollectorCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*Collection, error) {
+func NewCollection(exporterName, namespace string, logger *logrus.Logger, filters ...string) (*Collection, error) {
 	f := make(map[string]bool)
 	for _, filter := range filters {
 		enabled, exist := collectorState[filter]
