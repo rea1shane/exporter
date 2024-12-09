@@ -2,7 +2,6 @@
 package collector
 
 import (
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -149,7 +148,7 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog
 	var success float64
 
 	if err != nil {
-		if IsNoDataError(err) {
+		if isNoDataError(err) {
 			logger.Debug("collector returned no data", "name", name, "duration_seconds", duration.Seconds(), "err", err)
 		} else {
 			logger.Error("collector failed", "name", name, "duration_seconds", duration.Seconds(), "err", err)
@@ -161,11 +160,4 @@ func execute(name string, c Collector, ch chan<- prometheus.Metric, logger *slog
 	}
 	ch <- prometheus.MustNewConstMetric(scrapeDurationDesc, prometheus.GaugeValue, duration.Seconds(), name)
 	ch <- prometheus.MustNewConstMetric(scrapeSuccessDesc, prometheus.GaugeValue, success, name)
-}
-
-// ErrNoData indicates the collector found no data to collect, but had no other error.
-var ErrNoData = errors.New("collector returned no data")
-
-func IsNoDataError(err error) bool {
-	return err == ErrNoData
 }
