@@ -1,24 +1,23 @@
 package exporter
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"os/user"
 	"runtime"
 
 	"github.com/alecthomas/kingpin/v2"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
-	"github.com/sirupsen/logrus"
 
 	"github.com/rea1shane/exporter/collector"
 )
 
-type Exporter struct {
-}
-
-func New(logger *logrus.Logger, snakeCaseName, titleCaseName, description, namespace, defaultAddress string, warningRunAsRoot bool) {
+func Run(snakeCaseName, titleCaseName, description, namespace, defaultAddress string, warningRunAsRoot bool) {
 	var (
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
@@ -42,18 +41,21 @@ func New(logger *logrus.Logger, snakeCaseName, titleCaseName, description, names
 		toolkitFlags = kingpinflag.AddFlags(kingpin.CommandLine, defaultAddress)
 	)
 
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
 	kingpin.Version(version.Print(snakeCaseName))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
+	logger := promslog.New(promslogConfig)
 
 	if *disableDefaultCollectors {
 		collector.DisableDefaultCollectors()
 	}
-	logger.Infof("Starting %s %s", snakeCaseName, version.Info())
+	logger.Info(fmt.Sprintf("Starting %s", snakeCaseName), "version", version.Info())
 	logger.Info("Build context", "build_context", version.BuildContext())
 	if user, err := user.Current(); warningRunAsRoot && err == nil && user.Uid == "0" {
-		logger.Warnf("%s is running as root user. This exporter is designed to run as unprivileged user, root is not required.", titleCaseName)
+		logger.Warn(fmt.Sprintf("%s is running as root user. This exporter is designed to run as unprivileged user, root is not required.", titleCaseName))
 	}
 	runtime.GOMAXPROCS(*maxProcs)
 	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
