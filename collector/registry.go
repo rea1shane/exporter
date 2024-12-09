@@ -48,9 +48,9 @@ func collectorFlagAction(collector string) func(ctx *kingpin.ParseContext) error
 	}
 }
 
-// disableDefaultCollectors sets the collector state to false for all collectors which
+// DisableDefaultCollectors sets the collector state to false for all collectors which
 // have not been explicitly enabled on the command line.
-func disableDefaultCollectors() {
+func DisableDefaultCollectors() {
 	for c := range collectorState {
 		if _, ok := forcedCollectors[c]; !ok {
 			*collectorState[c] = false
