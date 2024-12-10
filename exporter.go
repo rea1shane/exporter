@@ -1,55 +1,39 @@
 package exporter
 
 import (
-	"errors"
+	"fmt"
+	"net/http"
+	"os"
+	"os/user"
+	"runtime"
+
 	"github.com/alecthomas/kingpin/v2"
-	"github.com/gin-gonic/gin"
+	"github.com/prometheus/common/promslog"
+	"github.com/prometheus/common/promslog/flag"
 	"github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
-	"github.com/rea1shane/gooooo/http"
-	cases "github.com/rea1shane/gooooo/strings"
-	"github.com/sirupsen/logrus"
-	"os"
-	"runtime"
-	"strings"
+	"github.com/prometheus/exporter-toolkit/web/kingpinflag"
+
+	"github.com/rea1shane/exporter/collector"
 )
 
-var (
-	e          = exporter{}
-	registered = false
-)
-
-// Register exporter information.
-// See exporter struct for more information.
-func Register(name, namespace, description, defaultAddress string, logger *logrus.Logger) {
-	e.name = name
-	e.namespace = namespace
-	e.description = description
-	e.defaultAddress = defaultAddress
-	e.logger = logger
-	registered = true
+// LandingPageConfig is fork from web.LandingConfig.
+// All options are optional, but it is strongly recommended to declare at least TitleCaseName if you need a landing page.
+// There will be a landing page if metricsPath is not "/".
+type LandingPageConfig struct {
+	HeaderColor   string             // HeaderColor used for the landing page header. NOTE: If CSS is not empty, HeaderColor has no effect.
+	CSS           string             // CSS style tag for the landing page.
+	TitleCaseName string             // TitleCaseName of the exporter. For example: Node Exporter.
+	Description   string             // Description about the exporter.
+	Form          web.LandingForm    // Form is a POST form.
+	Links         []web.LandingLinks // Links you want to show on the landing page OTHER THAN METRICS.
+	ExtraHTML     string             // ExtraHTML is additional HTML to be embedded.
+	ExtraCSS      string             // ExtraCSS is additional CSS to be embedded.
 }
 
-// Run server to collect metrics. NEED Register first.
-func Run() {
-	if !registered {
-		panic(errors.New("exporter unregistered, need register first"))
-	}
-	e.run()
-}
-
-// exporter information.
-type exporter struct {
-	name           string // name stylized as strings.SnakeCase, e.g. "node_exporter".
-	namespace      string // namespace defines the common namespace to be used by all metrics, e.g. "node".
-	description    string // description
-	defaultAddress string // defaultAddress e.g. ":9100". Set "" to use env "PORT". (see gin.resolveAddress function)
-
-	logger *logrus.Logger // logger will be added a logrus.Fields contains "Collector" and "Duration". logger can be controlled logrus.Level by the command line flag.
-}
-
-// run server to collect metrics.
-func (e exporter) run() {
+// Run will start the exporter.
+// snakeCaseName is exporter name in snake case. For example: node_exporter.
+func Run(snakeCaseName, namespace, defaultAddress string, landingPageConfig LandingPageConfig, warningRunAsRoot bool) {
 	var (
 		metricsPath = kingpin.Flag(
 			"web.telemetry-path",
@@ -68,80 +52,59 @@ func (e exporter) run() {
 			"Set all collectors to disabled by default.",
 		).Default("false").Bool()
 		maxProcs = kingpin.Flag(
-			"runtime.gomaxprocs",
-			"The target number of CPUs Go will run on (GOMAXPROCS)",
+			"runtime.gomaxprocs", "The target number of CPUs Go will run on (GOMAXPROCS)",
 		).Envar("GOMAXPROCS").Default("1").Int()
-		address = kingpin.Flag(
-			"web.listen-address",
-			"Address on which to expose metrics and web interface. Not support multiple addresses.",
-		).Default(e.defaultAddress).String()
-
-		logLevel = kingpin.Flag(
-			"log.level",
-			"Only log messages with the given severity or above. One of: [debug, info, warn, error]",
-		).Default("info").String()
-		latencyThreshold = kingpin.Flag(
-			"web.latency_threshold",
-			"When the latency exceeds the threshold, the log level will change from INFO to WARN. Use 0 to disable.",
-		).Default("0").Duration()
+		toolkitFlags = kingpinflag.AddFlags(kingpin.CommandLine, defaultAddress)
 	)
-	kingpin.Version(version.Print(e.name))
+
+	promslogConfig := &promslog.Config{}
+	flag.AddFlags(kingpin.CommandLine, promslogConfig)
+	kingpin.Version(version.Print(snakeCaseName))
 	kingpin.CommandLine.UsageWriter(os.Stdout)
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
-
-	level, err := logrus.ParseLevel(*logLevel)
-	if err != nil {
-		e.logger.Fatal(err)
-	}
-	e.logger.SetLevel(level)
+	logger := promslog.New(promslogConfig)
 
 	if *disableDefaultCollectors {
-		DisableDefaultCollectors()
+		collector.DisableDefaultCollectors()
 	}
-	e.logger.Infof("Starting %s", e.name)
-	e.logger.Infof("version: %s", version.Info())
-	e.logger.Infof("build context: %s", version.BuildContext())
-
+	logger.Info(fmt.Sprintf("Starting %s", snakeCaseName), "version", version.Info())
+	logger.Info("Build context", "build_context", version.BuildContext())
+	if user, err := user.Current(); warningRunAsRoot && err == nil && user.Uid == "0" {
+		logger.Warn(fmt.Sprintf("%s is running as root user. This exporter is designed to run as unprivileged user, root is not required.", snakeCaseName))
+	}
 	runtime.GOMAXPROCS(*maxProcs)
-	e.logger.Debugf("Go MAXPROCS: %d", runtime.GOMAXPROCS(0))
+	logger.Debug("Go MAXPROCS", "procs", runtime.GOMAXPROCS(0))
 
-	handler := http.NewHandler(e.logger, *latencyThreshold)
-	handler.GET(*metricsPath, gin.WrapH(newHandler(e.name, e.namespace, !*disableExporterMetrics, *maxRequests, e.logger)))
+	http.Handle(*metricsPath, newHandler(snakeCaseName, namespace, !*disableExporterMetrics, *maxRequests, logger))
 	if *metricsPath != "/" {
-		displayName, _ := cases.ConvertCase(e.name, cases.PascalSnakeCase)
 		landingConfig := web.LandingConfig{
-			Name:        strings.ReplaceAll(displayName, "_", " "),
-			Description: e.description,
+			HeaderColor: landingPageConfig.HeaderColor,
+			CSS:         landingPageConfig.CSS,
+			Name:        landingPageConfig.TitleCaseName,
+			Description: landingPageConfig.Description,
+			Form:        landingPageConfig.Form,
+			ExtraHTML:   landingPageConfig.ExtraHTML,
+			ExtraCSS:    landingPageConfig.ExtraCSS,
 			Version:     version.Info(),
-			Links: []web.LandingLinks{
+			Links: append([]web.LandingLinks{
 				{
 					Address: *metricsPath,
 					Text:    "Metrics",
 				},
-			},
+			}, landingPageConfig.Links...),
 		}
 		landingPage, err := web.NewLandingPage(landingConfig)
 		if err != nil {
-			e.logger.Fatal(err)
+			logger.Error(err.Error())
+			os.Exit(1)
 		}
-		handler.GET("/", gin.WrapH(landingPage))
+		http.Handle("/", landingPage)
 	}
 
-	addr := resolveAddress(*address)
-	e.logger.Infof("Listening and serving HTTP on %s", addr)
-	handler.Run(addr)
-}
-
-// resolveAddress copy from gin.resolveAddress
-func resolveAddress(addr string) string {
-	switch addr {
-	case "":
-		if port := os.Getenv("PORT"); port != "" {
-			return ":" + port
-		}
-		return ":8080"
-	default:
-		return addr
+	server := &http.Server{}
+	if err := web.ListenAndServe(server, toolkitFlags, logger); err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
 	}
 }

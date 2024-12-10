@@ -1,38 +1,41 @@
 package collector
 
 import (
+	"log/slog"
+	"math/rand/v2"
+
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/rea1shane/exporter"
-	"github.com/sirupsen/logrus"
+
+	"github.com/rea1shane/exporter/collector"
+	"github.com/rea1shane/exporter/metric"
 )
 
 const (
-	bNamespace = "special"
-	bSubsystem = "module_b"
+	bSubsystem = "b"
 )
 
 func init() {
-	exporter.RegisterCollector("b", exporter.DefaultEnabled, newCollectorB)
+	collector.RegisterCollector("b", collector.DefaultEnabled, newCollectorB)
 }
 
 type b struct {
-	logger *logrus.Entry
-	m1     exporter.TypedDesc
+	logger *slog.Logger
+	m1     metric.TypedDesc
 }
 
-func newCollectorB(_ string, logger *logrus.Entry) (exporter.Collector, error) {
+func newCollectorB(namespace string, logger *slog.Logger) (collector.Collector, error) {
 	return &b{
 		logger: logger,
-		// b's m1 use special namespace
-		m1: exporter.TypedDesc{
-			Desc: prometheus.NewDesc(prometheus.BuildFQName(bNamespace, bSubsystem, "m1"),
-				"This is b-m1", labelList1, nil),
+		m1: metric.TypedDesc{
+			Desc: prometheus.NewDesc(prometheus.BuildFQName(namespace, bSubsystem, "m1"),
+				"This is b-m1", []string{"key_x"}, nil),
 			ValueType: prometheus.CounterValue,
 		},
 	}, nil
 }
 
 func (c b) Update(ch chan<- prometheus.Metric) error {
-	exporter.PushTypedDesc(ch, c.m1, 3, "value_x")
+	c.logger.Info("Updating collector b")
+	c.m1.PushMetric(ch, rand.Float64(), "x")
 	return nil
 }

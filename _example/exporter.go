@@ -1,19 +1,28 @@
 package main
 
 import (
-	_ "example/collector"
-	"github.com/gin-gonic/gin"
+	_ "net/http/pprof"
+
+	"github.com/prometheus/exporter-toolkit/web"
+
 	"github.com/rea1shane/exporter"
-	"github.com/rea1shane/gooooo/log"
-	"github.com/sirupsen/logrus"
+
+	_ "example/collector"
 )
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
-	logger := logrus.New()
-	formatter := log.NewFormatter()
-	formatter.FieldsOrder = []string{"StatusCode", "Latency", "Collector", "Duration"}
-	logger.SetFormatter(formatter)
-	exporter.Register("test_exporter", "test", "This is a test exporter.", ":7777", logger)
-	exporter.Run()
+	landingConfig := exporter.LandingPageConfig{
+		HeaderColor:   "#b7999e",
+		TitleCaseName: "Example Exporter",
+		Description:   "This is an example exporter.",
+		Links: []web.LandingLinks{
+			{
+				Address:     "https://github.com/rea1shane/exporter",
+				Text:        "rea1shane/exporter",
+				Description: "Example exporter is build use this framework.",
+			},
+		},
+	}
+	// Open http://localhost:7777 in browser.
+	exporter.Run("example_exporter", "example", ":7777", landingConfig, true)
 }
