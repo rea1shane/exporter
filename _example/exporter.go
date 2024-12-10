@@ -3,11 +3,26 @@ package main
 import (
 	_ "net/http/pprof"
 
-	_ "example/collector"
+	"github.com/prometheus/exporter-toolkit/web"
 
 	"github.com/rea1shane/exporter"
+
+	_ "example/collector"
 )
 
 func main() {
-	exporter.Run("example_exporter", "Example Exporter", "This is a example exporter.", "example", ":7777", true)
+	landingConfig := exporter.LandingPageConfig{
+		HeaderColor:   "#b7999e",
+		TitleCaseName: "Example Exporter",
+		Description:   "This is a example exporter.",
+		Links: []web.LandingLinks{
+			{
+				Address:     "https://prometheus.io/docs/introduction/overview/",
+				Text:        "Prometheus Docs",
+				Description: "Learn more about Prometheus.",
+			},
+		},
+	}
+	// Open http://localhost:7777 in browser.
+	exporter.Run("example_exporter", "example", ":7777", landingConfig, true)
 }
