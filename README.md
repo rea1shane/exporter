@@ -18,7 +18,14 @@ Creating an export is very simple:
 1. Create some collectors implement `collector/Collector` and call `collector/RegisterCollector` in their `init` function.
 2. Call the `Run` function to start the exporter.
 
-There is an example in [`_example`](https://github.com/rea1shane/exporter/tree/main/_example).
+Tips:
+
+- `collector.ErrNoData` indicates the collector found no data to collect, but had no other error. If necessary, return it in the collector's `Update` method.
+- `metric.TypedDesc` makes easier to build metrics.
+- If you are not using `metric.TypedDesc` to build metrics, you can use `util.AnyToFloat64` to convert the data to `float64`.
+- Find more things in source code...
+
+There is an example in [`_example`](https://github.com/rea1shane/exporter/tree/main/_example). It can help you get up to speed with the framework faster.
 
 ## Optional feature
 
