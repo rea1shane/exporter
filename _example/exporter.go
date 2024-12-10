@@ -17,9 +17,9 @@ func main() {
 		Description:   "This is an example exporter.",
 		Links: []web.LandingLinks{
 			{
-				Address:     "https://prometheus.io/docs/introduction/overview/",
-				Text:        "Prometheus documentation",
-				Description: "Learn more about Prometheus.",
+				Address:     "https://github.com/rea1shane/exporter",
+				Text:        "rea1shane/exporter",
+				Description: "Example exporter is build use this framework.",
 			},
 		},
 	}
