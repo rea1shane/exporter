@@ -14,11 +14,11 @@ func main() {
 	landingConfig := exporter.LandingPageConfig{
 		HeaderColor:   "#b7999e",
 		TitleCaseName: "Example Exporter",
-		Description:   "This is a example exporter.",
+		Description:   "This is an example exporter.",
 		Links: []web.LandingLinks{
 			{
 				Address:     "https://prometheus.io/docs/introduction/overview/",
-				Text:        "Prometheus Docs",
+				Text:        "Prometheus documentation",
 				Description: "Learn more about Prometheus.",
 			},
 		},
