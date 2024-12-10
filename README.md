@@ -1,8 +1,12 @@
 # Exporter
 
-Fork from node exporter branch `master` commit `cf8c6891cc610e54f70383addd4bb6079f0add35`.
+Fork from [`node_exporter`](https://github.com/prometheus/node_exporter) revision [`cf8c6891cc610e54f70383addd4bb6079f0add35`](https://github.com/prometheus/node_exporter/tree/cf8c6891cc610e54f70383addd4bb6079f0add35).
 
-add follow to enable pprof:
+## Usage
+
+### PProf statistics
+
+Add follow to enable PProf statistics:
 
 ```go
 package main
@@ -12,4 +16,4 @@ import (
 )
 ```
 
-See [Add pprof links to landing page by SuperQ · Pull Request #196 · prometheus/exporter-toolkit](https://github.com/prometheus/exporter-toolkit/pull/196)
+See [prometheus/exporter-toolkit#196](https://github.com/prometheus/exporter-toolkit/pull/196) for more information.
