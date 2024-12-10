@@ -1,19 +1,22 @@
 # [Prometheus](https://github.com/prometheus/prometheus) exporter framework
 
-It helps you to easily build an exporter so that you only need to focus on the metrics themselves and not the exporter. Fork from [`node_exporter`](https://github.com/prometheus/node_exporter). Future updates to the `node_exporter` will also be merged into this repository.
+It helps you to easily build an exporter so that you only need to focus on the metrics themselves and not the exporter.
 
-You can manage collectors like node exporter. For example:
+This framework is created from [`node_exporter`](https://github.com/prometheus/node_exporter). After you have built your exporter using the framework, you can use exporter like `node_exporter`. For example:
 
 - [Enable & Disable collectors](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#collectors)
 - [Include & Exclude flags](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#include--exclude-flags)
 - [Filtering enabled collectors](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#filtering-enabled-collectors)
+- Useful metric `collector_duration_seconds` and `collector_success`.
 - And more...
 
 Run your exporter with `-h` to see all available configuration flags.
 
 ## Usage
 
-Creating an export is very simple:
+Exporter framework includes logger (use `log/slog`) and command line argument parser (use `github.com/alecthomas/kingpin/v2`), and already handles all errors in exporter runs.
+
+Creating your export is very simple:
 
 1. Create some collectors implement `collector/Collector` and call `collector/RegisterCollector` in their `init` function.
 2. Call the `Run` function to start the exporter.
