@@ -20,16 +20,17 @@ There is an example in [`_example`](https://github.com/rea1shane/exporter/tree/m
 
 Creating your export is very simple:
 
-1. Create some collectors implement `github.com/rea1shane/exporter/collector/Collector` and call `github.com/rea1shane/exporter/collector/RegisterCollector` in their `init` function.
-2. Call the `github.com/rea1shane/exporter/Run` function to start the exporter.
+1. Create some collectors implement `github.com/rea1shane/exporter/collector.Collector` and call `github.com/rea1shane/exporter/collector.RegisterCollector` in their `init` function.
+2. Call the `github.com/rea1shane/exporter.Run` function to start the exporter.
 
-Same as `node_exporter`, the framework uses `log/slog` as the logger and `github.com/alecthomas/kingpin/v2` as the command line argument parser.
+Now, everything is done!
 
-These tips will help you create a better exporter:
+### Tips
 
-- `collector.ErrNoData` indicates the collector found no data to collect, but had no other error. If necessary, return it in the collector's `Update` method.
-- `metric.TypedDesc` makes easier to create metrics.
-- If you are not using `metric.TypedDesc` to build metrics, you can use `util.AnyToFloat64` to convert the data to `float64`.
+- Same as `node_exporter`, the framework uses `log/slog` as the logger and `github.com/alecthomas/kingpin/v2` as the command line argument parser.
+- `github.com/rea1shane/exporter/collector.ErrNoData` indicates the collector found no data to collect, but had no other error. If necessary, return it in the `github.com/rea1shane/exporter/collector.Collector`'s `Update` method.
+- `github.com/rea1shane/exporter/metric.TypedDesc` makes easier to create metrics.
+- If you are not using `github.com/rea1shane/exporter/metric.TypedDesc` to create metrics, you can use `github.com/rea1shane/exporter/util.AnyToFloat64` function to convert the data to `float64`.
 
 ### Optional features
 
