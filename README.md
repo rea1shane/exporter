@@ -50,9 +50,10 @@ See [prometheus/exporter-toolkit#196](https://github.com/prometheus/exporter-too
 
 ## Development building and running
 
-You can use [prometheus/promu](https://github.com/prometheus/promu) to build exporter that use this framework:
+You can build or run an exporter that uses this framework just like a `node_exporter` or `blackbox_exporter`. All you need is:
 
 1. Copy [prometheus/prometheus/Makefile.common](https://github.com/prometheus/prometheus/blob/main/Makefile.common) to your repository root path.
-2. Create `.promu.yml` like [prometheus/node_exporter/.promu.yml](https://github.com/prometheus/node_exporter/blob/master/.promu.yml) or [prometheus/blackbox_exporter/.promu.yml](https://github.com/prometheus/blackbox_exporter/blob/master/.promu.yml).
-3. Create `Makefile` like [prometheus/node_exporter/Makefile](https://github.com/prometheus/node_exporter/blob/master/Makefile) or [prometheus/blackbox_exporter/Makefile](https://github.com/prometheus/blackbox_exporter/blob/master/Makefile).
-4. Reference [`node_exporter`'s readme](https://github.com/prometheus/node_exporter?tab=readme-ov-file#development-building-and-running) or [`blackbox_exporter`'s readme (contains build with Docker)](https://github.com/prometheus/blackbox_exporter?tab=readme-ov-file#building-the-software) to complete the building and running.
+2. Create `.promu.yml` like [prometheus/node_exporter/.promu.yml](https://github.com/prometheus/node_exporter/blob/master/.promu.yml) or [prometheus/blackbox_exporter/.promu.yml](https://github.com/prometheus/blackbox_exporter/blob/master/.promu.yml) in your repository root path.
+3. Create `Makefile` like [prometheus/node_exporter/Makefile](https://github.com/prometheus/node_exporter/blob/master/Makefile) or [prometheus/blackbox_exporter/Makefile](https://github.com/prometheus/blackbox_exporter/blob/master/Makefile) in your repository root path.
+
+Then you can reference [`node_exporter`'s readme](https://github.com/prometheus/node_exporter?tab=readme-ov-file#development-building-and-running) or [`blackbox_exporter`'s readme (contains build with Docker)](https://github.com/prometheus/blackbox_exporter?tab=readme-ov-file#building-the-software) to complete anything, such as building or running.
