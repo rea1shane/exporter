@@ -48,12 +48,33 @@ import (
 
 See [prometheus/exporter-toolkit#196](https://github.com/prometheus/exporter-toolkit/pull/196) for more information.
 
-## Development building and running
+## Building, running and more
 
-You can build or run an exporter that uses this framework just like a `node_exporter` or `blackbox_exporter`. All you need is:
+### Using [prometheus/promu](https://github.com/prometheus/promu)
 
-1. Copy [prometheus/prometheus/Makefile.common](https://github.com/prometheus/prometheus/blob/main/Makefile.common) to your repository root path.
-2. Create `.promu.yml` like [prometheus/node_exporter/.promu.yml](https://github.com/prometheus/node_exporter/blob/master/.promu.yml) or [prometheus/blackbox_exporter/.promu.yml](https://github.com/prometheus/blackbox_exporter/blob/master/.promu.yml) in your repository root path.
-3. Create `Makefile` like [prometheus/node_exporter/Makefile](https://github.com/prometheus/node_exporter/blob/master/Makefile) or [prometheus/blackbox_exporter/Makefile](https://github.com/prometheus/blackbox_exporter/blob/master/Makefile) in your repository root path.
+You can using `promu` to building or running an exporter that uses this framework just like `node_exporter`. All you need is:
 
-Then you can reference [`node_exporter`'s readme](https://github.com/prometheus/node_exporter?tab=readme-ov-file#development-building-and-running) or [`blackbox_exporter`'s readme (contains build with Docker)](https://github.com/prometheus/blackbox_exporter?tab=readme-ov-file#building-the-software) to complete anything, such as building or running.
+1. Copy [prometheus/node_exporter/Makefile.common](https://github.com/prometheus/node_exporter/blob/master/Makefile.common) to your repository root path.
+2. Create `.promu.yml` like [prometheus/node_exporter/.promu.yml](https://github.com/prometheus/node_exporter/blob/master/.promu.yml).
+3. Create `Makefile` like [prometheus/node_exporter/Makefile](https://github.com/prometheus/node_exporter/blob/master/Makefile).
+4. Create `VERSION` like [prometheus/node_exporter/VERSION](https://github.com/prometheus/node_exporter/blob/master/VERSION).
+
+Now your repository will looks like this:
+
+```
+your_exporter
+├── .promu.yml
+├── Makefile.common
+├── Makefile
+├── VERSION
+└── ...
+```
+
+Then you can execute everything that has been defined in Makefile.common. Some examples:
+
+- [Run](https://github.com/prometheus/node_exporter?tab=readme-ov-file#development-building-and-running)
+- [Local build](https://github.com/prometheus/blackbox_exporter?tab=readme-ov-file#local-build)
+- [Building with Docker](https://github.com/prometheus/blackbox_exporter?tab=readme-ov-file#building-with-docker) (Note: You need a `Dockerfile` like [this](https://github.com/prometheus/blackbox_exporter/blob/master/Dockerfile))
+- ...
+
+# Simply way
