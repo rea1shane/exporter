@@ -27,7 +27,6 @@ type a struct {
 func newCollectorA(namespace string, logger *slog.Logger) (collector.Collector, error) {
 	return &a{
 		logger: logger,
-		// a's m1 & m2 use common namespace
 		m1: metric.TypedDesc{
 			Desc: prometheus.NewDesc(prometheus.BuildFQName(namespace, aSubsystem, "m1"),
 				"This is a-m1", []string{"key_x"}, nil),
