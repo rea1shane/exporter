@@ -1,6 +1,6 @@
 # [Prometheus](https://github.com/prometheus/prometheus) exporter framework
 
-Lets you create a powerful exporter in two minutes. See [Usage](#usage).
+Lets you create a powerful exporter in two minutes.
 
 ## Features
 
@@ -9,7 +9,7 @@ This framework is extracted from [`node_exporter`](https://github.com/prometheus
 - [Enable & Disable collectors](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#collectors)
 - [Include & Exclude flags](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#include--exclude-flags)
 - [Filtering enabled collectors](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#filtering-enabled-collectors)
-- Useful metrics `collector_duration_seconds` and `collector_success` for collectors.
+- Useful metrics `collector_duration_seconds` and `collector_success`
 - ...
 
 ## Example
@@ -18,7 +18,7 @@ There is an example in [`_example`](https://github.com/rea1shane/exporter/tree/m
 
 ## Usage
 
-Creating your export is very simple:
+Creating your exporter is very easy:
 
 1. Create some collectors implement `github.com/rea1shane/exporter/collector.Collector` and call `github.com/rea1shane/exporter/collector.RegisterCollector` in their `init` function.
 2. Call the `github.com/rea1shane/exporter.Run` function to start the exporter.
@@ -36,7 +36,7 @@ Now, everything is done!
 
 #### PProf statistics
 
-Add `_ "net/http/pprof"` in imports to enable PProf statistics:
+Add `_ "net/http/pprof"` to imports to enable PProf statistics:
 
 ```go
 package main
@@ -78,4 +78,4 @@ Then you can execute everything that has been defined in `Makefile.common`. Some
 
 ### Manually
 
-See example's [Makefile](https://github.com/rea1shane/exporter/tree/main/_example/Makefile). (Note: Also need a `VERSION` file and may missing `tags` info)
+If you want to build in a simple way, see example's [Makefile](https://github.com/rea1shane/exporter/tree/main/_example/Makefile). (Note: Also need a `VERSION` file and may missing `tags` info)
