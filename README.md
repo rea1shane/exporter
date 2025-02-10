@@ -4,7 +4,7 @@ Lets you create a powerful exporter in two minutes.
 
 ## Features
 
-This framework is extracted from [`node_exporter`](https://github.com/prometheus/node_exporter). You can use all the features of `node_exporter` with this framework:
+This framework is extracted from [`node_exporter`](https://github.com/prometheus/node_exporter)'s [`node_exporter.go`](https://github.com/prometheus/node_exporter/blob/master/node_exporter.go) and [`collector.go`](https://github.com/prometheus/node_exporter/blob/master/collector/collector.go). You can use all the features of `node_exporter` with this framework:
 
 - [Enable & Disable collectors](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#collectors)
 - [Include & Exclude flags](https://github.com/prometheus/node_exporter/?tab=readme-ov-file#include--exclude-flags)
