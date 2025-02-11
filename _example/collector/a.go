@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"math/rand/v2"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/rea1shane/exporter/collector"
@@ -40,8 +41,16 @@ func newCollectorA(namespace string, logger *slog.Logger) (collector.Collector, 
 	}, nil
 }
 
+var (
+	photoneraAddress = kingpin.Flag(
+		"collector.a.test-flag",
+		"A user-defined command flag.",
+	).Default("undefined").String()
+)
+
 func (c a) Update(ch chan<- prometheus.Metric) error {
 	c.m1.PushMetric(ch, rand.Float64(), "m")
 	c.m2.PushMetric(ch, rand.Float64(), "m", "n")
+	c.logger.Info(*photoneraAddress)
 	return nil
 }
